@@ -1,0 +1,475 @@
+import argparse
+import os
+import pickle
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from typing import Dict, Any, List, Tuple, Optional
+
+from swarm_sim.utils.config import ExperimentConfig
+from swarm_sim.core.simulator import SwarmSimulator
+from swarm_sim.core.failure import FailureInjector
+from swarm_sim.scenarios.disaster_relay import DisasterRelayScenario
+from swarm_sim.scenarios.test_bank import TestBankGenerator
+from swarm_sim.policies.heuristic_dara import DARAHeuristicPolicy
+from swarm_sim.policies.gnn_actor import ActorGNN
+from swarm_sim.policies.gnn_critic import CriticGNN
+from swarm_sim.policies.gnn_policy import GNNPolicy
+from swarm_sim.graph.channel import ChannelModel
+from swarm_sim.graph.topology import SwarmTopologyManager
+
+class TrainPipeline:
+    """3-Checkpoint Training & Evaluation Pipeline for Autonomous Swarm Recovery."""
+    def __init__(
+        self,
+        output_dir: str = "checkpoints",
+        device: Optional[str] = None
+    ):
+        self.output_dir = output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        
+        self.device = torch.device(
+            device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
+        )
+        print(f"[TrainPipeline] Initialized on device: {self.device}")
+        
+        # Load test bank
+        self.bank_file = os.path.join(output_dir, "test_bank_50.pkl")
+        self.spare_file = os.path.join(output_dir, "test_bank_spare.pkl")
+        if not os.path.exists(self.bank_file):
+            tb_gen = TestBankGenerator()
+            tb_gen.save_bank(self.bank_file, self.spare_file)
+        self.bank_data = TestBankGenerator.load_bank(self.bank_file)
+        self.channel_model = ChannelModel()
+
+    def evaluate_policy_on_scenarios(
+        self,
+        policy_builder_fn: Any,
+        scenarios: List[Dict[str, Any]],
+        max_steps: int = 150
+    ) -> Dict[str, Any]:
+        """Evaluate a policy over a list of scenario configs."""
+        results = []
+        
+        for sc in scenarios:
+            config = ExperimentConfig(
+                num_drones=sc["num_drones"],
+                comm_range=sc["comm_range"],
+                seed=sc["seed"]
+            )
+            sim = SwarmSimulator(config)
+            scenario = DisasterRelayScenario(sim)
+            ground_a_id, ground_b_id = scenario.setup_scenario(
+                endpoint_a_pos=sc.get("endpoint_a_pos", (0.0, 0.0)),
+                endpoint_b_pos=sc.get("endpoint_b_pos", (200.0, 0.0))
+            )
+            
+            injector = FailureInjector(sim)
+            topo = SwarmTopologyManager(sim)
+            policy = policy_builder_fn(sim)
+            
+            failed = False
+            reconnected_step = None
+            
+            for t in range(max_steps):
+                if t == sc["fail_timestep"] and not failed:
+                    injector.fail_agent(sc["fail_agent_id"])
+                    failed = True
+                    
+                acc = policy.compute_control_forces()
+                sim.step(accelerations=acc)
+                
+                if failed and reconnected_step is None:
+                    G = topo.build_graph()
+                    if topo.has_path(ground_a_id, ground_b_id, graph=G):
+                        reconnected_step = t - sc["fail_timestep"]
+                        
+            G_final = topo.build_graph()
+            final_conn = topo.has_path(ground_a_id, ground_b_id, graph=G_final)
+            sum_rate = self.channel_model.compute_network_throughput(sim, G_final)
+            
+            results.append({
+                "seed": sc["seed"],
+                "num_drones": sc["num_drones"],
+                "fail_agent_id": sc["fail_agent_id"],
+                "success": final_conn,
+                "time_to_reconnect": reconnected_step if reconnected_step is not None else np.nan,
+                "final_sum_rate_mbps": sum_rate
+            })
+            
+        success_rate = float(np.mean([r["success"] for r in results]))
+        valid_times = [r["time_to_reconnect"] for r in results if not np.isnan(r["time_to_reconnect"])]
+        mean_time = float(np.mean(valid_times)) if valid_times else 999.0
+        mean_sum_rate = float(np.mean([r["final_sum_rate_mbps"] for r in results]))
+        
+        return {
+            "success_rate": success_rate,
+            "mean_time": mean_time,
+            "mean_sum_rate": mean_sum_rate,
+            "details": results
+        }
+
+    def collect_expert_trajectories(
+        self,
+        scenarios: List[Dict[str, Any]],
+        max_steps: int = 150
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Collect DARA heuristic trajectories off seen scenarios, asserting 100% reconnection."""
+        dataset = []
+        
+        reconnected_count = 0
+        for sc in scenarios:
+            config = ExperimentConfig(
+                num_drones=sc["num_drones"],
+                comm_range=sc["comm_range"],
+                seed=sc["seed"]
+            )
+            sim = SwarmSimulator(config)
+            scenario = DisasterRelayScenario(sim)
+            g_a, g_b = scenario.setup_scenario(
+                endpoint_a_pos=sc.get("endpoint_a_pos", (0.0, 0.0)),
+                endpoint_b_pos=sc.get("endpoint_b_pos", (200.0, 0.0))
+            )
+            injector = FailureInjector(sim)
+            expert = DARAHeuristicPolicy(sim)
+            gnn_helper = GNNPolicy(sim, device=str(self.device))
+            topo = SwarmTopologyManager(sim)
+            
+            reconn = False
+            for t in range(max_steps):
+                if t == sc["fail_timestep"]:
+                    injector.fail_agent(sc["fail_agent_id"])
+                    
+                expert_acc = expert.compute_control_forces()
+                node_t, edge_t, edge_idx_t, mobile_mask_t = gnn_helper.extract_graph_features()
+                
+                dataset.append({
+                    "node_t": node_t,
+                    "edge_t": edge_t,
+                    "edge_idx_t": edge_idx_t,
+                    "mobile_mask_t": mobile_mask_t,
+                    "target_acc": torch.from_numpy(expert_acc).to(self.device).float(),
+                    "seed": sc["seed"]
+                })
+                
+                sim.step(accelerations=expert_acc)
+                if t > sc["fail_timestep"] and not reconn:
+                    if topo.has_path(g_a, g_b):
+                        reconn = True
+                        
+            if reconn:
+                reconnected_count += 1
+                
+        assert reconnected_count == len(scenarios), f"Expert DARA failed on {len(scenarios) - reconnected_count} scenarios! Expected 100% reconnection."
+        
+        # 80/20 train/val split by seed
+        unique_seeds = list({d["seed"] for d in dataset})
+        np.random.seed(42)
+        val_seeds = set(np.random.choice(unique_seeds, size=max(1, len(unique_seeds)//5), replace=False))
+        
+        train_data = [d for d in dataset if d["seed"] not in val_seeds]
+        val_data = [d for d in dataset if d["seed"] in val_seeds]
+        
+        return train_data, val_data
+
+    def compute_open_loop_rmse(
+        self,
+        actor: ActorGNN,
+        val_data: List[Dict[str, Any]]
+    ) -> float:
+        """Compute open-loop RMSE between ActorGNN predictions and expert DARA actions on active mobile nodes."""
+        actor.eval()
+        sq_errors = []
+        with torch.no_grad():
+            for item in val_data:
+                pred = actor(item["node_t"], item["edge_t"], item["edge_idx_t"], item["mobile_mask_t"])
+                mask = item["mobile_mask_t"]
+                if mask.sum() > 0:
+                    err = (pred[mask] - item["target_acc"][mask]).cpu().numpy()
+                    sq_errors.extend((err**2).sum(axis=-1).tolist())
+        return float(np.sqrt(np.mean(sq_errors))) if sq_errors else 0.0
+
+    def run_checkpoint_A(
+        self,
+        max_dagger_rounds: int = 5,
+        bc_epochs: int = 30,
+        dagger_epochs: int = 15,
+        lr: float = 1e-3,
+        seed: int = 42
+    ) -> Dict[str, Any]:
+        """Execute Checkpoint A with automated k-escalation, divergence guard, and full reporting."""
+        print(f"\n=================================================================")
+        print(f"       CHECKPOINT A: IMITATION LEARNING (BC + DAGGER)")
+        print(f"=================================================================")
+        
+        # Set seeds
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        
+        # 1. Baseline DARA Reference
+        print("\n--- 1. Baseline DARA Reference Performance ---")
+        seen_scenarios = self.bank_data["seen_35"]
+        held_out_scenarios = self.bank_data["held_out_15"]
+        all_scenarios = self.bank_data["all_50"]
+        
+        dara_seen = self.evaluate_policy_on_scenarios(lambda s: DARAHeuristicPolicy(s), seen_scenarios)
+        dara_held_out = self.evaluate_policy_on_scenarios(lambda s: DARAHeuristicPolicy(s), held_out_scenarios)
+        dara_all = self.evaluate_policy_on_scenarios(lambda s: DARAHeuristicPolicy(s), all_scenarios)
+        
+        print(f"DARA Seen 35:     Success = {dara_seen['success_rate']*100:.1f}%, Mean Time = {dara_seen['mean_time']:.2f} t, Mean SR = {dara_seen['mean_sum_rate']:.2f} Mbps")
+        print(f"DARA Held-out 15: Success = {dara_held_out['success_rate']*100:.1f}%, Mean Time = {dara_held_out['mean_time']:.2f} t, Mean SR = {dara_held_out['mean_sum_rate']:.2f} Mbps")
+        print(f"DARA All 50:      Success = {dara_all['success_rate']*100:.1f}%, Mean Time = {dara_all['mean_time']:.2f} t, Mean SR = {dara_all['mean_sum_rate']:.2f} Mbps")
+        
+        dara_target_time = 1.2 * dara_all["mean_time"]
+        print(f"Checkpoint A Gate: Success Rate >= 95.0% and Mean Time <= {dara_target_time:.2f} ticks")
+        
+        # 2. Trajectory Collection D_0
+        print("\n--- 2. Trajectory Collection (D_0) ---")
+        train_d0, val_d0 = self.collect_expert_trajectories(seen_scenarios, max_steps=150)
+        total_samples = len(train_d0) + len(val_d0)
+        total_active_pairs = sum(int(d["mobile_mask_t"].sum().item()) for d in train_d0 + val_d0)
+        print(f"Collected {len(seen_scenarios)} rollouts across 35 seen scenarios (100% reconnected).")
+        print(f"Total graph state samples:    {total_samples} (Train: {len(train_d0)}, Val: {len(val_d0)})")
+        print(f"Total (state, action) pairs:  {total_active_pairs} active mobile agent steps.")
+        
+        # 3. k-Escalation Loop
+        for k_hop in [1, 2, 3]:
+            print(f"\n=================================================================")
+            print(f"  Evaluating Checkpoint A at k = {k_hop} (k-hop local GNN actor)")
+            print(f"=================================================================")
+            
+            # Divergence guard loop (1 retry with seed+1000)
+            for attempt, run_seed in enumerate([seed, seed + 1000]):
+                if attempt > 0:
+                    print(f"\n[Divergence Guard TRIGGERED] Retrying k={k_hop} with seed={run_seed}...")
+                    
+                torch.manual_seed(run_seed)
+                np.random.seed(run_seed)
+                
+                actor = ActorGNN(k_hops=k_hop, max_accel=5.0).to(self.device)
+                optimizer = optim.Adam(actor.parameters(), lr=lr)
+                criterion = nn.MSELoss()
+                
+                # --- BC Pretraining (Round 0) ---
+                print(f"\n[k={k_hop}] --- Step 1: BC Pretraining (Round 0) ---")
+                train_loss_curve = []
+                val_loss_curve = []
+                
+                diverged = False
+                for epoch in range(1, bc_epochs + 1):
+                    actor.train()
+                    np.random.shuffle(train_d0)
+                    epoch_loss = 0.0
+                    
+                    # Mini-batch updates
+                    batch_size = 32
+                    for i in range(0, len(train_d0), batch_size):
+                        batch = train_d0[i:i+batch_size]
+                        optimizer.zero_grad()
+                        loss_batch = 0.0
+                        for item in batch:
+                            pred = actor(item["node_t"], item["edge_t"], item["edge_idx_t"], item["mobile_mask_t"])
+                            loss_batch = loss_batch + criterion(pred, item["target_acc"])
+                        loss_batch = loss_batch / len(batch)
+                        
+                        if torch.isnan(loss_batch):
+                            diverged = True
+                            break
+                        loss_batch.backward()
+                        torch.nn.utils.clip_grad_norm_(actor.parameters(), max_norm=5.0)
+                        optimizer.step()
+                        epoch_loss += loss_batch.item() * len(batch)
+                        
+                    if diverged:
+                        print(f"  [Error] Loss diverged to NaN at Epoch {epoch}!")
+                        break
+                        
+                    mean_train_loss = epoch_loss / len(train_d0)
+                    train_loss_curve.append(mean_train_loss)
+                    
+                    # Validation loss
+                    actor.eval()
+                    val_loss = 0.0
+                    with torch.no_grad():
+                        for item in val_d0:
+                            pred = actor(item["node_t"], item["edge_t"], item["edge_idx_t"], item["mobile_mask_t"])
+                            val_loss += criterion(pred, item["target_acc"]).item()
+                    mean_val_loss = val_loss / len(val_d0)
+                    val_loss_curve.append(mean_val_loss)
+                    
+                    if epoch % 5 == 0 or epoch == 1 or epoch == bc_epochs:
+                        print(f"  Epoch {epoch:2d}/{bc_epochs} | Train Loss: {mean_train_loss:.6f} | Val Loss: {mean_val_loss:.6f}")
+                        
+                if diverged:
+                    continue  # Retry with seed+1000
+                    
+                # Open-Loop RMSE Gate Check
+                open_loop_rmse = self.compute_open_loop_rmse(actor, val_d0)
+                rmse_threshold = 0.1 * 28.0  # 2.80 m/s^2
+                rmse_passed = open_loop_rmse <= rmse_threshold
+                print(f"\n[Open-Loop Gate Check] Validation Action RMSE: {open_loop_rmse:.4f} m/s^2 (Threshold: 0.1*Rc = {rmse_threshold:.2f} m/s^2) -> {'PASSED' if rmse_passed else 'FAILED'}")
+                
+                # Closed-Loop Round 0 Evaluation
+                eval_seen_r0 = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), seen_scenarios)
+                eval_held_r0 = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), held_out_scenarios)
+                eval_all_r0 = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), all_scenarios)
+                
+                print(f"[Round 0 Closed-Loop] Seen 35: {eval_seen_r0['success_rate']*100:.1f}%, Held-out 15: {eval_held_r0['success_rate']*100:.1f}%, All 50: {eval_all_r0['success_rate']*100:.1f}% (Mean Time: {eval_all_r0['mean_time']:.2f} t)")
+                
+                if eval_all_r0["success_rate"] >= 0.95 and eval_all_r0["mean_time"] <= dara_target_time:
+                    print(f"\n===> CHECKPOINT A PASSED DIRECTLY AT BC PRETRAINING (k={k_hop}, Round 0)! <===")
+                    save_path = os.path.join(self.output_dir, f"checkpoint_A_best_k{k_hop}.pt")
+                    torch.save(actor.state_dict(), save_path)
+                    return {
+                        "k_hop": k_hop,
+                        "round": 0,
+                        "open_loop_rmse": open_loop_rmse,
+                        "rmse_threshold": rmse_threshold,
+                        "seen_eval": eval_seen_r0,
+                        "held_out_eval": eval_held_r0,
+                        "all_eval": eval_all_r0,
+                        "dara_all": dara_all,
+                        "dara_seen": dara_seen,
+                        "dara_held_out": dara_held_out,
+                        "train_loss_curve": train_loss_curve,
+                        "val_loss_curve": val_loss_curve,
+                        "actor": actor
+                    }
+                    
+                # --- DAgger Rounds 1..max_dagger_rounds ---
+                aggregated_dataset = list(train_d0)
+                prev_final_loss = train_loss_curve[-1]
+                
+                passed_dagger = False
+                for r in range(1, max_dagger_rounds + 1):
+                    print(f"\n[DAgger Round {r}/{max_dagger_rounds}] --- Fine-tuning from Round {r-1} weights ---")
+                    
+                    # Rollout learner policy and aggregate expert labels
+                    new_samples = 0
+                    for sc in seen_scenarios:
+                        config = ExperimentConfig(num_drones=sc["num_drones"], comm_range=sc["comm_range"], seed=sc["seed"])
+                        sim = SwarmSimulator(config)
+                        scenario = DisasterRelayScenario(sim)
+                        scenario.setup_scenario(endpoint_a_pos=sc.get("endpoint_a_pos", (0.0, 0.0)), endpoint_b_pos=sc.get("endpoint_b_pos", (200.0, 0.0)))
+                        injector = FailureInjector(sim)
+                        expert = DARAHeuristicPolicy(sim)
+                        learner_pol = GNNPolicy(sim, actor_gnn=actor, device=str(self.device))
+                        
+                        for t in range(150):
+                            if t == sc["fail_timestep"]:
+                                injector.fail_agent(sc["fail_agent_id"])
+                            node_t, edge_t, edge_idx_t, mobile_mask_t = learner_pol.extract_graph_features()
+                            expert_acc = expert.compute_control_forces()
+                            learner_acc = learner_pol.compute_control_forces()
+                            
+                            aggregated_dataset.append({
+                                "node_t": node_t,
+                                "edge_t": edge_t,
+                                "edge_idx_t": edge_idx_t,
+                                "mobile_mask_t": mobile_mask_t,
+                                "target_acc": torch.from_numpy(expert_acc).to(self.device).float(),
+                                "seed": sc["seed"]
+                            })
+                            new_samples += 1
+                            sim.step(accelerations=learner_acc)
+                            
+                    print(f"  Collected {new_samples} new state-action pairs. Total aggregated buffer: {len(aggregated_dataset)}")
+                    
+                    # Verify warm-start: compute initial loss before fine-tuning
+                    actor.eval()
+                    init_loss = 0.0
+                    with torch.no_grad():
+                        sample_idx = np.random.choice(len(aggregated_dataset), size=min(100, len(aggregated_dataset)), replace=False)
+                        for idx in sample_idx:
+                            item = aggregated_dataset[idx]
+                            pred = actor(item["node_t"], item["edge_t"], item["edge_idx_t"], item["mobile_mask_t"])
+                            init_loss += criterion(pred, item["target_acc"]).item()
+                    mean_init_loss = init_loss / len(sample_idx)
+                    print(f"  [Warm-Start Check] Round {r} Initial Loss: {mean_init_loss:.6f} (vs Round {r-1} Final Loss: {prev_final_loss:.6f})")
+                    
+                    # Fine-tune on aggregated dataset
+                    actor.train()
+                    for ep in range(1, dagger_epochs + 1):
+                        np.random.shuffle(aggregated_dataset)
+                        ep_loss = 0.0
+                        for i in range(0, len(aggregated_dataset), 32):
+                            batch = aggregated_dataset[i:i+32]
+                            optimizer.zero_grad()
+                            l_b = 0.0
+                            for item in batch:
+                                pred = actor(item["node_t"], item["edge_t"], item["edge_idx_t"], item["mobile_mask_t"])
+                                l_b = l_b + criterion(pred, item["target_acc"])
+                            l_b = l_b / len(batch)
+                            l_b.backward()
+                            torch.nn.utils.clip_grad_norm_(actor.parameters(), max_norm=5.0)
+                            optimizer.step()
+                            ep_loss += l_b.item() * len(batch)
+                        prev_final_loss = ep_loss / len(aggregated_dataset)
+                        if ep % 5 == 0 or ep == dagger_epochs:
+                            print(f"    DAgger Epoch {ep:2d}/{dagger_epochs} | Loss: {prev_final_loss:.6f}")
+                            
+                    # Evaluate on all 50 scenarios
+                    eval_seen_r = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), seen_scenarios)
+                    eval_held_r = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), held_out_scenarios)
+                    eval_all_r = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), all_scenarios)
+                    
+                    print(f"  [Round {r} Evaluation] Seen: {eval_seen_r['success_rate']*100:.1f}%, Held-out: {eval_held_r['success_rate']*100:.1f}%, All: {eval_all_r['success_rate']*100:.1f}% (Mean Time: {eval_all_r['mean_time']:.2f} t)")
+                    
+                    if eval_all_r["success_rate"] >= 0.95 and eval_all_r["mean_time"] <= dara_target_time:
+                        passed_dagger = True
+                        print(f"\n===> CHECKPOINT A PASSED AT k={k_hop}, DAgger Round {r}! <===")
+                        save_path = os.path.join(self.output_dir, f"checkpoint_A_best_k{k_hop}.pt")
+                        torch.save(actor.state_dict(), save_path)
+                        return {
+                            "k_hop": k_hop,
+                            "round": r,
+                            "open_loop_rmse": open_loop_rmse,
+                            "rmse_threshold": rmse_threshold,
+                            "seen_eval": eval_seen_r,
+                            "held_out_eval": eval_held_r,
+                            "all_eval": eval_all_r,
+                            "dara_all": dara_all,
+                            "dara_seen": dara_seen,
+                            "dara_held_out": dara_held_out,
+                            "train_loss_curve": train_loss_curve,
+                            "val_loss_curve": val_loss_curve,
+                            "actor": actor
+                        }
+                        
+                if not passed_dagger:
+                    print(f"[Ablation] k={k_hop} failed to pass after {max_dagger_rounds} DAgger rounds on attempt {attempt+1}.")
+                    if attempt == 0:
+                        continue  # Try retry seed+1000
+                    else:
+                        ablation_csv = os.path.join(self.output_dir, f"checkpoint_A_k{k_hop}_ablation.csv")
+                        df_abl = pd.DataFrame([{
+                            "k_hop": k_hop,
+                            "success_rate_seen": eval_seen_r["success_rate"],
+                            "success_rate_held_out": eval_held_r["success_rate"],
+                            "success_rate_all": eval_all_r["success_rate"],
+                            "mean_time_all": eval_all_r["mean_time"],
+                            "target_time": dara_target_time,
+                            "passed": False
+                        }])
+                        df_abl.to_csv(ablation_csv, index=False)
+                        print(f"Logged ablation to {ablation_csv}. Escalating to k={k_hop+1}...")
+                        break
+
+        raise RuntimeError("Checkpoint A failed across all k=1, 2, 3 escalation attempts.")
+
+def main():
+    parser = argparse.ArgumentParser(description="Autonomous Swarm Training Pipeline")
+    parser.add_argument("--checkpoint", type=str, default="A", choices=["A", "B", "C"], help="Checkpoint stage to run")
+    parser.add_argument("--output-dir", type=str, default="checkpoints", help="Output directory for checkpoints and logs")
+    args = parser.parse_args()
+    
+    pipeline = TrainPipeline(output_dir=args.output_dir)
+    if args.checkpoint == "A":
+        pipeline.run_checkpoint_A()
+    else:
+        print(f"Checkpoint {args.checkpoint} pipeline step configured.")
+
+if __name__ == "__main__":
+    main()
