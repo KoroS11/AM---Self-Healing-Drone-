@@ -463,7 +463,7 @@ class TrainPipeline:
         self,
         sim: SwarmSimulator,
         is_connected: bool,
-        reconnected_this_step: bool,
+        is_first_reconnection_event: bool,
         comm_range: float = 28.0,
         lambda_bonus: float = 500.0,
         lambda_conn: float = 1.0,
@@ -476,14 +476,14 @@ class TrainPipeline:
         """Compute structured multi-agent reward for Checkpoint B MAPPO.
         
         Components:
-          1. Milestone Reconnection Bonus: +500.0 on the exact step A <-> B is restored.
+          1. Milestone Reconnection Bonus: +500.0 on the SINGLE exact step A <-> B is first restored in an episode.
           2. Step Connectivity: +1.0 while connected, -0.1 step penalty while disconnected.
           3. Distance-Margin Bonus: +lambda_margin * mean((Rc - d_ij)/Rc) for active edges (when connected).
           4. Velocity-Damping Penalty: -lambda_vel * mean(||v_i||^2) on active mobile relays (when connected).
           5. Acceleration/Energy Penalty: -lambda_acc * mean(||a_i||^2) on active mobile relays.
         """
-        # 1. Milestone bonus
-        r_bonus = lambda_bonus if reconnected_this_step else 0.0
+        # 1. Milestone bonus: strictly checks "is this the first time the episode has ever reconnected"
+        r_bonus = lambda_bonus if is_first_reconnection_event else 0.0
         
         # 2. Step connectivity
         r_conn = lambda_conn if is_connected else lambda_disc_step
@@ -545,8 +545,17 @@ class TrainPipeline:
         held_out_scenarios = self.bank_data["held_out_15"]
         all_scenarios = self.bank_data["all_50"]
         
-        # 22-scenario validation suite (15 held-out + 7 stratified seen)
-        val_suite = held_out_scenarios + [seen_scenarios[i] for i in range(0, len(seen_scenarios), 5)]
+        # Validation Suite: 10 dedicated spare seeds (1050..1059) from test_bank_spare.pkl
+        # Prevents test-set selection bias on the 15 held-out scenarios (1035..1049).
+        spare_path = os.path.join(self.output_dir, "test_bank_spare.pkl")
+        if os.path.exists(spare_path):
+            with open(spare_path, "rb") as f:
+                spare_bank = pickle.load(f)
+            val_suite = spare_bank["spare_10"]
+        else:
+            val_suite = [self.bank_generator.generate_scenario_config(s) for s in range(1050, 1060)]
+        
+        print(f"Divergence Guard Validation Suite: 10 Dedicated Spare Scenarios (Seeds: {[s['seed'] for s in val_suite]})")
         
         # Checkpoint A warm-start verification
         assert os.path.exists(checkpoint_A_path), f"Checkpoint A weights not found at {checkpoint_A_path}"
@@ -557,6 +566,7 @@ class TrainPipeline:
             
             if attempt > 0:
                 print(f"\n[CLOSED-LOOP DIVERGENCE GUARD TRIGGERED] Retrying Checkpoint B with seed={run_seed}, lr_actor={curr_lr_actor:.1e}...")
+
                 
             torch.manual_seed(run_seed)
             np.random.seed(run_seed)
