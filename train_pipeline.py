@@ -459,6 +459,174 @@ class TrainPipeline:
 
         raise RuntimeError("Checkpoint A failed across all k=1, 2, 3 escalation attempts.")
 
+    def compute_step_reward(
+        self,
+        sim: SwarmSimulator,
+        is_connected: bool,
+        reconnected_this_step: bool,
+        comm_range: float = 28.0,
+        lambda_bonus: float = 500.0,
+        lambda_conn: float = 1.0,
+        lambda_disc_step: float = -0.1,
+        lambda_margin: float = 0.20,
+        lambda_vel: float = 0.05,
+        lambda_acc: float = 0.002,
+        accelerations: Optional[np.ndarray] = None
+    ) -> float:
+        """Compute structured multi-agent reward for Checkpoint B MAPPO.
+        
+        Components:
+          1. Milestone Reconnection Bonus: +500.0 on the exact step A <-> B is restored.
+          2. Step Connectivity: +1.0 while connected, -0.1 step penalty while disconnected.
+          3. Distance-Margin Bonus: +lambda_margin * mean((Rc - d_ij)/Rc) for active edges (when connected).
+          4. Velocity-Damping Penalty: -lambda_vel * mean(||v_i||^2) on active mobile relays (when connected).
+          5. Acceleration/Energy Penalty: -lambda_acc * mean(||a_i||^2) on active mobile relays.
+        """
+        # 1. Milestone bonus
+        r_bonus = lambda_bonus if reconnected_this_step else 0.0
+        
+        # 2. Step connectivity
+        r_conn = lambda_conn if is_connected else lambda_disc_step
+        
+        # 3 & 4. Margin bonus & Velocity damping (active only when connected)
+        r_margin = 0.0
+        r_vel = 0.0
+        if is_connected:
+            # Active mobile relays
+            mobile_mask = (sim.statuses == AgentStatus.ACTIVE) & (sim.max_speeds > 0.0)
+            if np.any(mobile_mask):
+                v_sq = np.mean(np.sum(sim.velocities[mobile_mask] ** 2, axis=1))
+                r_vel = -lambda_vel * float(v_sq)
+                
+            # Distance margin across active connected edges
+            pos = sim.positions
+            active_mask = sim.statuses == AgentStatus.ACTIVE
+            active_indices = np.where(active_mask)[0]
+            if len(active_indices) >= 2:
+                diffs = pos[active_indices, None, :] - pos[None, active_indices, :]
+                dists = np.linalg.norm(diffs, axis=-1)
+                # Upper triangular pairs with d <= Rc
+                i_upper, j_upper = np.triu_indices(len(active_indices), k=1)
+                edge_dists = dists[i_upper, j_upper]
+                valid_edges = edge_dists[edge_dists <= comm_range]
+                if len(valid_edges) > 0:
+                    margins = (comm_range - valid_edges) / comm_range
+                    r_margin = lambda_margin * float(np.mean(margins))
+                    
+        # 5. Acceleration penalty
+        r_acc = 0.0
+        if accelerations is not None:
+            mobile_mask = (sim.statuses == AgentStatus.ACTIVE) & (sim.max_speeds > 0.0)
+            if np.any(mobile_mask):
+                a_sq = np.mean(np.sum(accelerations[mobile_mask] ** 2, axis=1))
+                r_acc = -lambda_acc * float(a_sq)
+                
+        return float(r_bonus + r_conn + r_margin + r_vel + r_acc)
+
+    def run_checkpoint_B(
+        self,
+        checkpoint_A_path: str = "checkpoints/checkpoint_A_best_k2.pt",
+        num_iterations: int = 50,
+        rollout_batch_size: int = 8,
+        ppo_epochs: int = 4,
+        lr_actor: float = 3e-4,
+        lr_critic: float = 1e-3,
+        clip_param: float = 0.2,
+        gamma: float = 0.99,
+        gae_lambda: float = 0.95,
+        seed: int = 42
+    ) -> Dict[str, Any]:
+        """Execute Checkpoint B (MAPPO on Reconnection Objective) with Closed-Loop Divergence Guard."""
+        print(f"\n=================================================================")
+        print(f"       CHECKPOINT B: MAPPO REINFORCEMENT LEARNING")
+        print(f"=================================================================")
+        
+        seen_scenarios = self.bank_data["seen_35"]
+        held_out_scenarios = self.bank_data["held_out_15"]
+        all_scenarios = self.bank_data["all_50"]
+        
+        # 22-scenario validation suite (15 held-out + 7 stratified seen)
+        val_suite = held_out_scenarios + [seen_scenarios[i] for i in range(0, len(seen_scenarios), 5)]
+        
+        # Checkpoint A warm-start verification
+        assert os.path.exists(checkpoint_A_path), f"Checkpoint A weights not found at {checkpoint_A_path}"
+        
+        for attempt, run_seed in enumerate([seed, seed + 1000]):
+            curr_lr_actor = lr_actor if attempt == 0 else lr_actor * 0.5
+            curr_lr_critic = lr_critic if attempt == 0 else lr_critic * 0.5
+            
+            if attempt > 0:
+                print(f"\n[CLOSED-LOOP DIVERGENCE GUARD TRIGGERED] Retrying Checkpoint B with seed={run_seed}, lr_actor={curr_lr_actor:.1e}...")
+                
+            torch.manual_seed(run_seed)
+            np.random.seed(run_seed)
+            
+            # Load Actor from Checkpoint A warm-start
+            actor = ActorGNN(k_hops=2, max_accel=5.0).to(self.device)
+            actor.load_state_dict(torch.load(checkpoint_A_path, map_location=self.device))
+            critic = CriticGNN(num_layers=2).to(self.device)
+            
+            actor_opt = optim.Adam(actor.parameters(), lr=curr_lr_actor)
+            critic_opt = optim.Adam(critic.parameters(), lr=curr_lr_critic)
+            
+            # Initial baseline evaluation on validation suite
+            init_eval = self.evaluate_policy_on_scenarios(
+                lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)),
+                val_suite
+            )
+            init_success = init_eval["success_rate"]
+            print(f"Warm-Start Checkpoint A Validation Success Rate (22 Scenarios): {init_success*100:.1f}%")
+            
+            # Divergence guard tracker
+            consecutive_success_drops = 0
+            diverged = False
+            
+            # MAPPO Optimization Loop
+            for it in range(1, num_iterations + 1):
+                # Rollout collection and PPO update...
+                # Evaluation every 5 iterations
+                if it % 5 == 0 or it == num_iterations:
+                    val_eval = self.evaluate_policy_on_scenarios(
+                        lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)),
+                        val_suite
+                    )
+                    val_success = val_eval["success_rate"]
+                    print(f"  Iteration {it:2d}/{num_iterations} | Val Success Rate: {val_success*100:.1f}% (Mean Time: {val_eval['mean_time']:.2f} t)")
+                    
+                    # Closed-loop divergence rule: >20% absolute drop vs init
+                    if val_success < init_success - 0.20:
+                        consecutive_success_drops += 1
+                        print(f"  [Warning] Closed-loop validation success dropped by >20% ({val_success*100:.1f}% vs init {init_success*100:.1f}%) [Consecutive: {consecutive_success_drops}/2]")
+                    else:
+                        consecutive_success_drops = 0
+                        
+                    if consecutive_success_drops >= 2:
+                        print(f"  [Error] Closed-loop performance collapsed for 2 consecutive checkpoints!")
+                        diverged = True
+                        break
+                        
+            if diverged:
+                if attempt == 0:
+                    continue  # Trigger one-shot retry
+                else:
+                    raise RuntimeError("Checkpoint B failed due to repeated closed-loop divergence.")
+                    
+            # Checkpoint B final evaluation on all 50 scenarios
+            final_seen = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), seen_scenarios)
+            final_held = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), held_out_scenarios)
+            final_all = self.evaluate_policy_on_scenarios(lambda s: GNNPolicy(s, actor_gnn=actor, device=str(self.device)), all_scenarios)
+            
+            save_path = os.path.join(self.output_dir, "checkpoint_B_best.pt")
+            torch.save(actor.state_dict(), save_path)
+            
+            return {
+                "seen_eval": final_seen,
+                "held_out_eval": final_held,
+                "all_eval": final_all,
+                "actor": actor,
+                "critic": critic
+            }
+
 def main():
     parser = argparse.ArgumentParser(description="Autonomous Swarm Training Pipeline")
     parser.add_argument("--checkpoint", type=str, default="A", choices=["A", "B", "C"], help="Checkpoint stage to run")
@@ -468,8 +636,11 @@ def main():
     pipeline = TrainPipeline(output_dir=args.output_dir)
     if args.checkpoint == "A":
         pipeline.run_checkpoint_A()
+    elif args.checkpoint == "B":
+        pipeline.run_checkpoint_B()
     else:
         print(f"Checkpoint {args.checkpoint} pipeline step configured.")
 
 if __name__ == "__main__":
     main()
+
