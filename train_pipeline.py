@@ -9,6 +9,7 @@ import torch.optim as optim
 from typing import Dict, Any, List, Tuple, Optional
 
 from swarm_sim.utils.config import ExperimentConfig
+from swarm_sim.utils.enums import AgentStatus
 from swarm_sim.core.simulator import SwarmSimulator
 from swarm_sim.core.failure import FailureInjector
 from swarm_sim.scenarios.disaster_relay import DisasterRelayScenario
@@ -523,6 +524,86 @@ class TrainPipeline:
                 
         return float(r_bonus + r_conn + r_margin + r_vel + r_acc)
 
+    def collect_mappo_rollout(
+        self,
+        scenario_config: Dict[str, Any],
+        actor: ActorGNN,
+        critic: CriticGNN,
+        max_steps: int = 150
+    ) -> Dict[str, Any]:
+        """Collect one closed-loop rollout episode computing step rewards and returns.
+        
+        Tracks persistent per-episode reconnection state (ever_reconnected) to guarantee
+        the milestone bonus (+500.0) is awarded at most once per episode.
+        """
+        config = ExperimentConfig(
+            num_drones=scenario_config["num_drones"],
+            comm_range=scenario_config["comm_range"],
+            seed=scenario_config["seed"]
+        )
+        sim = SwarmSimulator(config)
+        scenario = DisasterRelayScenario(sim)
+        g_a, g_b = scenario.setup_scenario(
+            endpoint_a_pos=scenario_config.get("endpoint_a_pos", (0.0, 0.0)),
+            endpoint_b_pos=scenario_config.get("endpoint_b_pos", (200.0, 0.0))
+        )
+        injector = FailureInjector(sim)
+        policy = GNNPolicy(sim, actor_gnn=actor, device=str(self.device))
+        topo = SwarmTopologyManager(sim)
+        
+        # Persistent per-episode tracking: initialized to False, set to True on first reconnect, never reset
+        ever_reconnected = False
+        
+        episode_rewards = []
+        episode_states = []
+        episode_actions = []
+        episode_values = []
+        
+        for t in range(max_steps):
+            if t == scenario_config["fail_timestep"]:
+                injector.fail_agent(scenario_config["fail_agent_id"])
+                
+            node_t, edge_t, edge_idx_t, mobile_mask_t = policy.extract_graph_features()
+            
+            # Predict action and state value
+            with torch.no_grad():
+                acc_t = actor(node_t, edge_t, edge_idx_t, mobile_mask_t)
+                val_t = critic(node_t, edge_t, edge_idx_t)
+                
+            acc_np = acc_t.cpu().numpy()
+            sim.step(accelerations=acc_np)
+            
+            G = topo.build_graph()
+            is_connected = topo.has_path(g_a, g_b, graph=G)
+            
+            # Compute single-event reconnection flag
+            is_first_reconn = False
+            if is_connected and not ever_reconnected:
+                is_first_reconn = True
+                ever_reconnected = True
+                
+            reward = self.compute_step_reward(
+                sim=sim,
+                is_connected=is_connected,
+                is_first_reconnection_event=is_first_reconn,
+                comm_range=scenario_config["comm_range"],
+                accelerations=acc_np
+            )
+            
+            episode_rewards.append(reward)
+            episode_states.append((node_t, edge_t, edge_idx_t, mobile_mask_t))
+            episode_actions.append(acc_t)
+            episode_values.append(val_t)
+            
+        return {
+            "rewards": episode_rewards,
+            "states": episode_states,
+            "actions": episode_actions,
+            "values": episode_values,
+            "reconnected": ever_reconnected,
+            "total_return": sum(episode_rewards)
+        }
+
     def run_checkpoint_B(
         self,
         checkpoint_A_path: str = "checkpoints/checkpoint_A_best_k2.pt",
@@ -552,10 +633,10 @@ class TrainPipeline:
             with open(spare_path, "rb") as f:
                 spare_bank = pickle.load(f)
             val_suite = spare_bank["spare_10"]
+            print(f"[Dataset Loader] Verified: Loaded 10 reserved validation scenarios from '{spare_path}' (Seeds: {[s['seed'] for s in val_suite]}).")
         else:
             val_suite = [self.bank_generator.generate_scenario_config(s) for s in range(1050, 1060)]
-        
-        print(f"Divergence Guard Validation Suite: 10 Dedicated Spare Scenarios (Seeds: {[s['seed'] for s in val_suite]})")
+            print(f"[Dataset Loader] Notice: '{spare_path}' not found on disk; dynamically generated 10 fallback validation scenarios (Seeds: {[s['seed'] for s in val_suite]}).")
         
         # Checkpoint A warm-start verification
         assert os.path.exists(checkpoint_A_path), f"Checkpoint A weights not found at {checkpoint_A_path}"
@@ -566,6 +647,7 @@ class TrainPipeline:
             
             if attempt > 0:
                 print(f"\n[CLOSED-LOOP DIVERGENCE GUARD TRIGGERED] Retrying Checkpoint B with seed={run_seed}, lr_actor={curr_lr_actor:.1e}...")
+
 
                 
             torch.manual_seed(run_seed)
