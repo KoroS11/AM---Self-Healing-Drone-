@@ -244,7 +244,7 @@ Each drone $i \in \{1, \dots, N\}$ obeys discrete double-integrator kinematics:
 $$
 \begin{aligned}
 \mathbf{p}_i(t + \Delta t) &= \mathbf{p}_i(t) + \mathbf{v}_i(t) \Delta t + \frac{1}{2} \mathbf{a}_i(t) \Delta t^2 \\
-\mathbf{v}_i(t + \Delta t) &= \operatorname{clamp}\left(\mathbf{v}_i(t) + \mathbf{a}_i(t) \Delta t, -v_{\max}, v_{\max}\right)
+\mathbf{v}_i(t + \Delta t) &= \text{clamp}\left(\mathbf{v}_i(t) + \mathbf{a}_i(t) \Delta t, -v_{\max}, v_{\max}\right)
 \end{aligned}
 $$
 
