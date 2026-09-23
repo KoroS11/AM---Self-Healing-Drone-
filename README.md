@@ -11,18 +11,25 @@
 
 ---
 
-## 📌 Executive Overview
+## Visual Study Overview & Trajectory Replay
+
+![Autonomous Self-Healing Swarm Dynamic Recovery](demo_phase4_recovery.png)
+*Figure 1: Autonomous dynamic gap closure and relay reorganization following catastrophic in-flight drone failure between Ground Station A and Ground Station B.*
+
+---
+
+## Executive Overview
 
 **Autonomous Self-Healing Drone Swarm (AM-SHDS)** is a high-performance simulation and control framework designed to study and resolve catastrophic network fragmentation in aerial multi-hop drone relay chains operating in contested, disaster, or infrastructure-deprived environments.
 
-When intermediate relays experience in-flight dropouts (e.g., kinetic destruction, hardware failure, battery depletion, or jamming), the end-to-end communication link between ground stations $A$ and $B$ breaks. AM-SHDS deploys a **Centralized Training with Decentralized Execution (CTDE)** multi-agent pipeline combining:
+When intermediate relays experience in-flight dropouts (kinetic destruction, hardware failure, battery depletion, or signal jamming), the end-to-end communication link between ground stations $A$ and $B$ breaks. AM-SHDS deploys a **Centralized Training with Decentralized Execution (CTDE)** multi-agent pipeline combining:
 1. **$SO(2)$-Invariant Graph Neural Network (GNN)** local message-passing actor for gap-closing mobilization.
 2. **Heterogeneity-Aware $9\times 5$ Graph Feature Schema** resolving communication range differences ($R_c$).
 3. **Lexicographic Second-Order Control Barrier Function Quadratic Program (CBF-QP)** safety filter enforcing forward-invariant inter-relay connectivity constraints while eliminating elastic post-reconnection drift.
 
 ---
 
-## 🎯 Key Technical Innovations
+## Key Technical Innovations
 
 ### 1. Second-Order Lexicographic CBF-QP Safety Filter
 To resolve the fundamental tension between rapid gap closure (high acceleration) and steady-state edge stability (zero overshoot), AM-SHDS introduces a **two-phase lexicographic controller**:
@@ -30,6 +37,9 @@ To resolve the fundamental tension between rapid gap closure (high acceleration)
 - **Phase 2: Connected Safe Operation ($A \leftrightarrow B$)**: Once end-to-end connectivity is restored, raw RL control forces $u_{\text{desired}}$ are filtered through a per-tick Quadratic Program (OSQP) enforcing relative acceleration barrier constraints across all live edges $(i, j) \in E(G)$:
   $$2(\mathbf{p}_i - \mathbf{p}_j)^T (\mathbf{a}_i - \mathbf{a}_j) \le -2\|\mathbf{v}_i - \mathbf{v}_j\|^2 + \alpha_1 \dot{h}_{ij} + \alpha_2 h_{ij}$$
   where $h_{ij} = r_{\text{safe}}^2 - \|\mathbf{p}_i - \mathbf{p}_j\|^2 \ge 0$, and $r_{\text{safe}} = \max(\min(R_{c,i}, R_{c,j}) - \epsilon, 1.0\text{m})$.
+
+![Inter-Relay Distance Dynamics and Throughput Stability](docs/images/recovery_dynamics.png)
+*Figure 2: Distance invariance and Shannon sum-rate throughput stability under B-Prime + Second-Order CBF-QP ($\alpha_1=3.0, \alpha_2=1.5, \epsilon=0.02\text{m}$) versus unfiltered baseline drift.*
 
 ### 2. $9 \times 5$ Heterogeneity-Aware Graph Schema
 Standard spatial GNNs assume homogeneous communication radii, leading to severe edge chattering when individual drones suffer degraded transceivers ($R_c < 28\text{m}$). AM-SHDS incorporates exact local hardware degradation into graph message-passing:
@@ -42,7 +52,7 @@ All local observations and relative vectors are dynamically projected onto the u
 
 ---
 
-## 📊 Benchmark & Verification Results
+## Benchmark & Verification Results
 
 ### A. 50-Scenario Benchmark Gate ($300\text{ Ticks}$, Seen 35 + Held-Out 15)
 
@@ -59,6 +69,9 @@ All local observations and relative vectors are dynamically projected onto the u
 ---
 
 ### B. Out-of-Distribution (OOD) Stress Test Battery ($300\text{ Ticks}$, 94 Scenarios Total)
+
+![Stress Battery Performance Comparison](docs/images/stress_battery_performance.png)
+*Figure 3: Sustained $K=20$ pass rates across all 10 stress categories comparing baseline Checkpoint B versus B-Prime + Second-Order CBF-QP ($\alpha_1=3.0, \alpha_2=1.5, \epsilon=0.02\text{m}$).*
 
 | Stress Category | Total $N$ | Baseline Checkpoint B | Production B-Prime + CBF-QP | Performance & Mechanism Notes |
 | :--- | :---: | :---: | :---: | :--- |
@@ -77,7 +90,16 @@ All local observations and relative vectors are dynamically projected onto the u
 
 ---
 
-## 📁 Repository Structure
+## Topology Formations & Kinematic States
+
+| Linear Multi-Hop Relay | 2D Grid Lattice Topology | Random Geographic Scatter |
+| :---: | :---: | :---: |
+| ![Line Relay](demo_line_relay.png) | ![Grid Lattice](demo_grid_lattice.png) | ![Random Scatter](demo_random_scatter.png) |
+| *Collinear Ground A $\leftrightarrow$ B Chain* | *2D Meshed Relay Lattice* | *Scattered Initial Node Placements* |
+
+---
+
+## Repository Structure
 
 ```tree
 SWARM/
@@ -87,6 +109,9 @@ SWARM/
 │   ├── checkpoint_B_prime_best.pt      # Production Checkpoint B-Prime (9x5 schema)
 │   ├── test_bank_50.pkl                # Standard 50-scenario benchmark dataset
 │   └── test_bank_spare.pkl             # 10-seed spare evaluation dataset
+├── docs/images/                        # High-resolution research study figures
+│   ├── recovery_dynamics.png           # Inter-relay distance & Shannon rate stability
+│   └── stress_battery_performance.png  # OOD stress testing performance breakdown
 ├── swarm_sim/                          # Core simulation package
 │   ├── core/                           # Kinematics, agent state, and failure injection
 │   │   ├── agent.py                    # UAV kinematic state representation
@@ -129,10 +154,11 @@ SWARM/
 │   ├── test_simulator.py               # Physics integration & clamping
 │   ├── test_topology.py                # Graph connectivity & shortest paths
 │   └── test_viz.py                     # Matplotlib animation & GIF export tests
-├── scripts/                            # Visual demo scripts
+├── scripts/                            # Visual demo scripts & figure generators
 │   ├── demo_phase2.py                  # Phase 2 kinematic lattice demo
 │   ├── demo_phase3_baseline.py         # Phase 3 DARA heuristic baseline demo
-│   └── demo_phase4_recovery.py         # Phase 4 recovery replay demo
+│   ├── demo_phase4_recovery.py         # Phase 4 recovery replay demo
+│   └── generate_study_figures.py       # High-resolution figure renderer
 ├── train_pipeline.py                   # Checkpoints A/B/B-Prime training pipeline
 ├── run_experiment.py                   # CLI experiment runner
 ├── CHANGELOG.md                        # Complete chronological release history
@@ -142,7 +168,7 @@ SWARM/
 
 ---
 
-## 🚀 Quickstart & Installation
+## Quickstart & Installation
 
 ### 1. Prerequisites
 - Python `3.10` or higher
@@ -168,7 +194,7 @@ pytest tests/ -v
 
 ---
 
-## 💻 CLI Usage
+## CLI Usage
 
 ### Run an Interactive Experiment
 ```bash
@@ -193,7 +219,7 @@ python -m scratch.verify_eps002_determinism_significance
 
 ---
 
-## 🔬 Mathematical Formulation
+## Mathematical Formulation
 
 ### 1. Kinematics & Physics Model
 Each drone $i \in \{1, \dots, N\}$ obeys discrete double-integrator kinematics:
@@ -224,7 +250,7 @@ $$C_{ij} = B \log_2 \left(1 + \frac{P_t \cdot 10^{-\text{PL}_{ij}/10}}{N_0 B}\ri
 
 ---
 
-## 📜 Authors & Citation
+## Authors & Citation
 
 Developed by **Harsh Jain** ([@KoroS11](https://github.com/KoroS11)).
 
@@ -240,5 +266,5 @@ If you use this simulator or benchmark in your research, please cite:
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
