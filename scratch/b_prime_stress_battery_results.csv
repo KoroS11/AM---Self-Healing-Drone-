@@ -1,0 +1,45 @@
+category,desc,bp_reconn,bp_time,bp_rate,bp_drops,bp_mode,b_reconn,b_time,b_rate,b_drops,b_mode
+1. Simultaneous Double Failure,"N=9, d=200m, Fail [3,6] at t=10 (Separated)",False,,0.0,0,Failed to Reconnect,False,,357.92,0,Failed to Reconnect
+1. Simultaneous Double Failure,"N=9, d=200m, Fail [4,5] at t=10 (Adjacent)",False,,188.06,0,Failed to Reconnect,False,,354.8,0,Failed to Reconnect
+1. Simultaneous Double Failure,"N=11, d=200m, Fail [3,7] at t=10 (Separated)",True,21.0,1396.44,18,Success with Oscillation (18 drops),True,25.0,1396.56,31,Success with Oscillation (31 drops)
+1. Simultaneous Double Failure,"N=11, d=200m, Fail [5,6] at t=10 (Adjacent)",True,51.0,1396.44,0,Success (Stable),True,65.0,1396.76,0,Success (Stable)
+2. Cascading Failure,"N=9, d=200m, Fail 4@t=10, 6@t=30",False,,355.63,0,Failed to Reconnect,False,,354.8,0,Failed to Reconnect
+2. Cascading Failure,"N=9, d=200m, Fail 3@t=10, 5@t=30",False,,189.36,0,Failed to Reconnect,False,,0.0,0,Failed to Reconnect
+2. Cascading Failure,"N=11, d=200m, Fail 5@t=10, 7@t=30",True,48.0,1396.52,0,Success (Stable),True,51.0,1396.69,0,Success (Stable)
+2. Cascading Failure,"N=11, d=200m, Fail 4@t=10, 3@t=30 (Adj)",True,50.0,1396.33,0,Success (Stable),True,62.0,1396.97,0,Success (Stable)
+3. Scale Test (Large Swarm),"N=15, d=350m, Fail 7@t=10 (Center)",False,68.0,2055.9,7,Reconnect-then-Drift (7 post-reconnect disconnects),False,73.0,2039.09,48,Reconnect-then-Drift (48 post-reconnect disconnects)
+3. Scale Test (Large Swarm),"N=15, d=350m, Fail 4@t=10 (Near-A)",True,101.0,2222.67,0,Success (Stable),True,117.0,2221.88,0,Success (Stable)
+3. Scale Test (Large Swarm),"N=21, d=500m, Fail 10@t=10 (Center)",False,66.0,2570.85,66,Reconnect-then-Drift (66 post-reconnect disconnects),False,,2738.07,0,Failed to Reconnect
+3. Scale Test (Large Swarm),"N=21, d=500m, Fail 5@t=10 (Near-A)",False,,2918.83,0,Failed to Reconnect,False,,2573.46,0,Failed to Reconnect
+4. Non-Collinear Corridor,"N=9, d=180.0m, 45.0°",True,46.0,1223.18,0,Success (Stable),True,54.0,1224.09,0,Success (Stable)
+4. Non-Collinear Corridor,"N=9, d=180.0m, 53.1°",True,46.0,1223.03,0,Success (Stable),True,54.0,1223.3,0,Success (Stable)
+4. Non-Collinear Corridor,"N=11, d=200.0m, 45.0°",True,20.0,1584.48,0,Success (Stable),True,24.0,1584.46,0,Success (Stable)
+4. Non-Collinear Corridor,"N=11, d=200.0m, 60.0°",True,21.0,1584.48,0,Success (Stable),True,23.0,1584.43,0,Success (Stable)
+4. Non-Collinear Corridor,"N=11, d=200.0m, 17.0°",True,21.0,1584.51,0,Success (Stable),True,23.0,1584.46,0,Success (Stable)
+4. Non-Collinear Corridor,"N=9, d=180.0m, 73.0°",True,46.0,1223.62,0,Success (Stable),True,54.0,1223.03,0,Success (Stable)
+4. Non-Collinear Corridor,"N=11, d=200.0m, 112.0°",True,20.0,1584.47,0,Success (Stable),True,24.0,1584.45,0,Success (Stable)
+4. Non-Collinear Corridor,"N=9, d=180.0m, 200.0°",True,46.0,1223.72,0,Success (Stable),True,54.0,1223.06,0,Success (Stable)
+5. Failure Timing Extremes,"N=9, d=200m, Fail 5@t=1 (Extreme Early)",False,,689.88,0,Failed to Reconnect,False,,189.28,0,Failed to Reconnect
+5. Failure Timing Extremes,"N=11, d=200m, Fail 6@t=1 (Extreme Early)",True,21.0,1584.42,13,Success with Oscillation (13 drops),True,22.0,1584.44,0,Success (Stable)
+5. Failure Timing Extremes,"N=9, d=200m, Fail 5@t=140 (10 ticks left)",False,,1057.03,0,Failed to Reconnect,False,,1056.79,0,Failed to Reconnect
+5. Failure Timing Extremes,"N=11, d=200m, Fail 6@t=140 (10 ticks left)",False,,1426.42,0,Failed to Reconnect,False,,1427.87,0,Failed to Reconnect
+6. Tight-Margin Geometry,"N=9, d=185m (margin 1.57m), Fail 5@t=10",True,52.0,1219.28,3,Success with Oscillation (3 drops),True,59.0,1219.15,3,Success with Oscillation (3 drops)
+6. Tight-Margin Geometry,"N=9, d=189m (margin 1.00m), Fail 4@t=10",True,68.0,1216.52,4,Success with Oscillation (4 drops),True,74.0,1215.81,0,Success (Stable)
+6. Tight-Margin Geometry,"N=9, d=192m (margin 0.57m), Fail 5@t=10",True,57.0,1213.72,25,Success with Oscillation (25 drops),True,65.0,1213.34,47,Success with Oscillation (47 drops)
+6. Tight-Margin Geometry,"N=9, d=195m (margin 0.14m), Fail 5@t=10",False,,856.5,0,Failed to Reconnect,False,67.0,856.22,51,Reconnect-then-Drift (51 post-reconnect disconnects)
+7. Triple Simultaneous Failure,"N=11, d=180m, Fail [5,6,7]@t=10 (Adj Center)",True,71.0,1223.37,0,Success (Stable),True,72.0,1223.66,0,Success (Stable)
+7. Triple Simultaneous Failure,"N=11, d=180m, Fail [3,6,9]@t=10 (Spread)",True,18.0,1222.13,55,Success with Oscillation (55 drops),True,70.0,1222.52,0,Success (Stable)
+7. Triple Simultaneous Failure,"N=11, d=180m, Fail [2,3,4]@t=10 (Cluster Near-A)",True,129.0,1224.33,0,Success (Stable),True,122.0,1223.51,0,Success (Stable)
+7. Triple Simultaneous Failure,"N=11, d=180m, Fail [4,5,8]@t=10 (Asymmetric)",True,53.0,1223.39,16,Success with Oscillation (16 drops),True,59.0,1222.62,2,Success with Oscillation (2 drops)
+8. Adversarial Cut-Vertex,"N=9, d=200m, Adversarial Cut-Vertex -> Relay 2 (Gap: 50.0m)",False,,355.01,0,Failed to Reconnect,False,,167.23,0,Failed to Reconnect
+8. Adversarial Cut-Vertex,"N=11, d=200m, Adversarial Cut-Vertex -> Relay 2 (Gap: 40.0m)",True,26.0,1584.62,0,Success (Stable),True,24.0,1585.11,13,Success with Oscillation (13 drops)
+8. Adversarial Cut-Vertex,"N=9, d=180m, Clustered + Adversarial -> Relay 2 (Gap: 180.0m)",True,48.0,1223.33,0,Success (Stable),True,42.0,1223.39,0,Success (Stable)
+8. Adversarial Cut-Vertex,"N=11, d=210m, Tight Chain + Adversarial -> Relay 2 (Gap: 42.0m)",True,39.0,1577.02,0,Success (Stable),True,38.0,1576.95,0,Success (Stable)
+9. Compound Stressors,"45° + Double Fail [4,7]@t=10 (N=11, d=200m)",True,42.0,1395.68,0,Success (Stable),True,46.0,1395.76,0,Success (Stable)
+9. Compound Stressors,Tight-Margin d=188m + Late Fail@t=80 (N=9),True,54.0,1216.22,0,Success (Stable),True,61.0,1216.56,0,Success (Stable)
+9. Compound Stressors,"60° + Cascade Fail 5@10,7@30 (N=11, d=200m)",True,48.0,1396.43,6,Success with Oscillation (6 drops),True,51.0,1396.51,0,Success (Stable)
+9. Compound Stressors,"Jitter + Double Fail [4,8]@t=10 (N=11, d=190m)",True,32.0,1404.47,0,Success (Stable),True,24.0,1404.13,0,Success (Stable)
+11. Comm-Range Heterogeneity,"N=9, d=170m, Agent 4 Rc=22m, Fail 6@t=10",False,43.0,1060.02,75,Reconnect-then-Drift (75 post-reconnect disconnects),False,60.0,890.09,42,Reconnect-then-Drift (42 post-reconnect disconnects)
+11. Comm-Range Heterogeneity,"N=9, d=165m, Agents 3,6 Rc=22m, Fail 5@t=10",False,,875.76,0,Failed to Reconnect,False,76.0,1063.18,48,Reconnect-then-Drift (48 post-reconnect disconnects)
+11. Comm-Range Heterogeneity,"N=11, d=180m, Agents 4,8 Rc=22m, Fail 6@t=10",False,24.0,1240.25,59,Reconnect-then-Drift (59 post-reconnect disconnects),True,57.0,1600.1,2,Success with Oscillation (2 drops)
+11. Comm-Range Heterogeneity,"N=11, d=185m, Agent 5 Rc=20m, Fail 7@t=10",False,21.0,1424.37,74,Reconnect-then-Drift (74 post-reconnect disconnects),True,25.0,1597.13,64,Success with Oscillation (64 drops)

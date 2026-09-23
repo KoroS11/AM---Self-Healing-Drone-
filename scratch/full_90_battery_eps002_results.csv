@@ -1,0 +1,95 @@
+desc,seed,num_drones,reconnect_rel,first_conn,snap_150,snap_300,k20_150,k20_300,drops_after,sum_rate,infeasible_qp,category
+"N=7, Seed=1000",1000,7,77.0,97.0,True,True,True,True,0,882.5846364323922,0,Benchmark Gate
+"N=9, Seed=1001",1001,9,56.0,71.0,True,True,True,True,0,1223.4856039402243,0,Benchmark Gate
+"N=9, Seed=1002",1002,9,44.0,64.0,True,True,True,True,0,1224.894890647329,0,Benchmark Gate
+"N=9, Seed=1003",1003,9,70.0,85.0,True,True,True,True,0,1223.0460561664106,0,Benchmark Gate
+"N=11, Seed=1004",1004,11,45.0,65.0,True,True,True,True,0,1565.839412446207,0,Benchmark Gate
+"N=9, Seed=1005",1005,9,65.0,75.0,True,True,True,True,0,1224.2734776216769,0,Benchmark Gate
+"N=7, Seed=1006",1006,7,60.0,80.0,True,True,True,True,0,881.2387974859798,0,Benchmark Gate
+"N=11, Seed=1007",1007,11,44.0,59.0,True,True,True,True,0,1566.500928925328,0,Benchmark Gate
+"N=7, Seed=1008",1008,7,61.0,76.0,True,True,True,True,0,881.143429158397,0,Benchmark Gate
+"N=7, Seed=1009",1009,7,46.0,66.0,True,True,True,True,0,881.3095134797436,0,Benchmark Gate
+"N=7, Seed=1010",1010,7,68.0,88.0,True,True,True,True,0,881.6541464387237,0,Benchmark Gate
+"N=11, Seed=1011",1011,11,45.0,60.0,True,True,True,True,0,1566.967812188714,0,Benchmark Gate
+"N=11, Seed=1012",1012,11,56.0,76.0,True,True,True,True,0,1566.1439117651603,0,Benchmark Gate
+"N=7, Seed=1013",1013,7,100.0,120.0,True,True,True,True,0,881.378405099028,0,Benchmark Gate
+"N=9, Seed=1014",1014,9,45.0,60.0,True,True,True,True,0,1223.9464048694394,0,Benchmark Gate
+"N=11, Seed=1015",1015,11,70.0,80.0,True,True,True,True,0,1565.9170798181476,0,Benchmark Gate
+"N=7, Seed=1016",1016,7,61.0,76.0,True,True,True,True,0,881.143429158397,0,Benchmark Gate
+"N=7, Seed=1017",1017,7,60.0,80.0,True,True,True,True,0,881.2387974859798,0,Benchmark Gate
+"N=9, Seed=1018",1018,9,56.0,71.0,True,True,True,True,0,1223.4856039402243,0,Benchmark Gate
+"N=9, Seed=1019",1019,9,84.0,94.0,True,True,True,True,0,1223.8826266051547,0,Benchmark Gate
+"N=9, Seed=1020",1020,9,70.0,85.0,True,True,True,True,0,1223.0460561664106,0,Benchmark Gate
+"N=9, Seed=1021",1021,9,56.0,71.0,True,True,True,True,0,1223.4856039402243,0,Benchmark Gate
+"N=7, Seed=1022",1022,7,83.0,93.0,True,True,True,True,0,881.275531659706,0,Benchmark Gate
+"N=7, Seed=1023",1023,7,46.0,56.0,True,True,True,True,1,881.3233139640549,5,Benchmark Gate
+"N=9, Seed=1024",1024,9,56.0,66.0,True,True,True,True,0,1224.3641767489153,0,Benchmark Gate
+"N=11, Seed=1025",1025,11,92.0,107.0,True,True,True,True,0,1565.297540543219,0,Benchmark Gate
+"N=9, Seed=1026",1026,9,44.0,54.0,True,True,True,True,0,1224.5539563017658,0,Benchmark Gate
+"N=11, Seed=1027",1027,11,45.0,60.0,True,True,True,True,0,1566.386091610375,0,Benchmark Gate
+"N=9, Seed=1028",1028,9,47.0,57.0,True,True,True,True,0,1224.1433691987459,0,Benchmark Gate
+"N=11, Seed=1029",1029,11,63.0,83.0,True,True,True,True,0,1566.1074965255987,0,Benchmark Gate
+"N=9, Seed=1030",1030,9,56.0,71.0,True,True,True,True,0,1223.4856039402243,0,Benchmark Gate
+"N=9, Seed=1031",1031,9,65.0,75.0,True,True,True,True,0,1224.2734776216769,0,Benchmark Gate
+"N=7, Seed=1032",1032,7,46.0,61.0,True,True,True,True,1,882.3297776839153,6,Benchmark Gate
+"N=11, Seed=1033",1033,11,72.0,92.0,True,True,True,True,0,1565.5682403868475,0,Benchmark Gate
+"N=11, Seed=1034",1034,11,72.0,87.0,True,True,True,True,0,1565.2180530526334,0,Benchmark Gate
+"N=7, Seed=1035",1035,7,83.0,93.0,True,True,True,True,0,881.275531659706,0,Benchmark Gate
+"N=11, Seed=1036",1036,11,44.0,54.0,True,True,True,True,0,1567.1187864951862,0,Benchmark Gate
+"N=9, Seed=1037",1037,9,43.0,63.0,True,True,True,True,0,1223.793456305525,0,Benchmark Gate
+"N=7, Seed=1038",1038,7,92.0,102.0,True,True,True,True,0,881.3410106184402,0,Benchmark Gate
+"N=7, Seed=1039",1039,7,46.0,66.0,True,True,True,True,0,881.3095134797436,0,Benchmark Gate
+"N=7, Seed=1040",1040,7,100.0,115.0,True,True,True,True,0,881.0732182425279,0,Benchmark Gate
+"N=9, Seed=1041",1041,9,56.0,66.0,True,True,True,True,0,1224.3641767489153,0,Benchmark Gate
+"N=7, Seed=1042",1042,7,46.0,66.0,True,True,True,True,0,881.3095134797436,0,Benchmark Gate
+"N=9, Seed=1043",1043,9,45.0,60.0,True,True,True,True,0,1224.1313706618132,0,Benchmark Gate
+"N=11, Seed=1044",1044,11,72.0,87.0,True,True,True,True,0,1565.2180530526334,0,Benchmark Gate
+"N=9, Seed=1045",1045,9,67.0,82.0,True,True,True,True,0,1224.2193807632505,0,Benchmark Gate
+"N=11, Seed=1046",1046,11,64.0,79.0,True,True,True,True,0,1566.1212099423128,0,Benchmark Gate
+"N=11, Seed=1047",1047,11,93.0,113.0,True,True,True,True,0,1565.8909853561884,0,Benchmark Gate
+"N=9, Seed=1048",1048,9,45.0,60.0,True,True,True,True,0,1223.9464048694394,0,Benchmark Gate
+"N=11, Seed=1049",1049,11,44.0,54.0,True,True,True,True,0,1566.3780084804578,0,Benchmark Gate
+"N=9, d=200m, Fail [3,6] at t=10 (Separated)",2001,9,,,False,False,False,False,0,0.0,0,1. Simultaneous Double Failure
+"N=9, d=200m, Fail [4,5] at t=10 (Adjacent)",2002,9,,,False,False,False,False,0,0.0,0,1. Simultaneous Double Failure
+"N=11, d=200m, Fail [3,7] at t=10 (Separated)",2003,11,21.0,31.0,True,True,True,True,1,1396.4098677912339,6,1. Simultaneous Double Failure
+"N=11, d=200m, Fail [5,6] at t=10 (Adjacent)",2004,11,51.0,61.0,True,True,True,True,0,1396.5681827472822,0,1. Simultaneous Double Failure
+"N=9, d=200m, Fail 4@t=10, 6@t=30",2011,9,,,False,False,False,False,0,0.0,0,2. Cascading Failure
+"N=9, d=200m, Fail 3@t=10, 5@t=30",2012,9,,,False,False,False,False,0,0.0,0,2. Cascading Failure
+"N=11, d=200m, Fail 5@t=10, 7@t=30",2013,11,47.0,77.0,True,True,True,True,0,1396.4808876765983,0,2. Cascading Failure
+"N=11, d=200m, Fail 4@t=10, 3@t=30 (Adj)",2014,11,50.0,80.0,True,True,True,True,0,1396.4501618814347,0,2. Cascading Failure
+"N=15, d=350m, Fail 7@t=10 (Center)",2021,15,66.0,76.0,True,True,True,True,0,2220.0070174255607,0,3. Scale Test (Large Swarm)
+"N=15, d=350m, Fail 4@t=10 (Near-A)",2022,15,98.0,108.0,True,True,True,True,0,2220.7489629984425,0,3. Scale Test (Large Swarm)
+"N=21, d=500m, Fail 10@t=10 (Center)",2023,21,65.0,75.0,True,True,True,True,1,3233.165041872939,0,3. Scale Test (Large Swarm)
+"N=21, d=500m, Fail 5@t=10 (Near-A)",2024,21,,,False,False,False,False,0,0.0,0,3. Scale Test (Large Swarm)
+"N=9, d=180.0m, 45.0°",2031,9,46.0,56.0,True,True,True,True,0,1223.7653836236939,0,4. Non-Collinear Corridor
+"N=9, d=180.0m, 53.1°",2032,9,46.0,56.0,True,True,True,True,0,1223.5358658192129,0,4. Non-Collinear Corridor
+"N=11, d=200.0m, 45.0°",2033,11,20.0,30.0,True,True,True,True,0,1584.4753318656312,0,4. Non-Collinear Corridor
+"N=11, d=200.0m, 60.0°",2034,11,21.0,31.0,True,True,True,True,0,1584.4881672122638,0,4. Non-Collinear Corridor
+"N=11, d=200.0m, 17.0°",3001,11,21.0,31.0,True,True,True,True,0,1584.603103500176,0,4. Non-Collinear Corridor
+"N=9, d=180.0m, 73.0°",3002,9,46.0,56.0,True,True,True,True,0,1223.4092525396084,0,4. Non-Collinear Corridor
+"N=11, d=200.0m, 112.0°",3003,11,20.0,30.0,True,True,True,True,0,1584.4309985322714,0,4. Non-Collinear Corridor
+"N=9, d=180.0m, 200.0°",3004,9,46.0,56.0,True,True,True,True,0,1223.8761805714444,0,4. Non-Collinear Corridor
+"N=9, d=200m, Fail 5@t=1 (Extreme Early)",2041,9,,,False,False,False,False,0,0.0,0,5. Failure Timing Extremes
+"N=11, d=200m, Fail 6@t=1 (Extreme Early)",2042,11,21.0,22.0,True,True,True,True,0,1584.4851422122263,0,5. Failure Timing Extremes
+"N=9, d=200m, Fail 5@t=140 (10 ticks left)",2043,9,,,False,False,False,False,0,0.0,0,5. Failure Timing Extremes
+"N=11, d=200m, Fail 6@t=140 (10 ticks left)",2044,11,24.0,164.0,False,True,False,True,0,1584.529021634973,0,5. Failure Timing Extremes
+"N=9, d=185m (margin 1.57m), Fail 5@t=10",2051,9,52.0,62.0,True,True,True,True,0,1219.638296954907,0,6. Tight-Margin Geometry
+"N=9, d=189m (margin 1.00m), Fail 4@t=10",2052,9,68.0,78.0,True,True,True,True,0,1217.2232923601953,0,6. Tight-Margin Geometry
+"N=9, d=192m (margin 0.57m), Fail 5@t=10",2053,9,57.0,67.0,True,True,True,True,1,1213.45342280212,0,6. Tight-Margin Geometry
+"N=9, d=195m (margin 0.14m), Fail 5@t=10",2054,9,91.0,101.0,True,True,True,True,4,1210.7978991811724,0,6. Tight-Margin Geometry
+"N=11, d=180m, Fail [5,6,7]@t=10 (Adj Center)",2071,11,71.0,81.0,True,True,True,True,0,1223.7044854585401,0,7. Triple Simultaneous Failure
+"N=11, d=180m, Fail [3,6,9]@t=10 (Spread)",2072,11,18.0,28.0,True,True,True,True,1,1223.4417897605476,2,7. Triple Simultaneous Failure
+"N=11, d=180m, Fail [2,3,4]@t=10 (Cluster Near-A)",2073,11,128.0,138.0,True,True,False,True,0,1223.6151845199204,0,7. Triple Simultaneous Failure
+"N=11, d=180m, Fail [4,5,8]@t=10 (Asymmetric)",2074,11,53.0,63.0,True,True,True,True,1,1224.056793477093,0,7. Triple Simultaneous Failure
+"N=9, d=200m, Adversarial Cut-Vertex -> Relay 2 (Gap: 50.0m)",2081,9,,,False,False,False,False,0,0.0,0,8. Adversarial Cut-Vertex
+"N=11, d=200m, Adversarial Cut-Vertex -> Relay 2 (Gap: 40.0m)",2082,11,26.0,36.0,True,True,True,True,0,1584.6283392439489,0,8. Adversarial Cut-Vertex
+"N=9, d=180m, Clustered + Adversarial -> Relay 2 (Gap: 180.0m)",2083,9,48.0,58.0,True,True,True,True,0,1223.4101918220724,0,8. Adversarial Cut-Vertex
+"N=11, d=210m, Tight Chain + Adversarial -> Relay 2 (Gap: 42.0m)",2084,11,39.0,49.0,True,True,True,True,0,1576.9409523070062,0,8. Adversarial Cut-Vertex
+"45° + Double Fail [4,7]@t=10 (N=11, d=200m)",2091,11,42.0,52.0,True,True,True,True,0,1396.4329629475683,0,9. Compound Stressors
+Tight-Margin d=188m + Late Fail@t=80 (N=9),2092,9,53.0,133.0,True,True,False,True,0,1216.666889995312,0,9. Compound Stressors
+"60° + Cascade Fail 5@10,7@30 (N=11, d=200m)",2093,11,48.0,78.0,True,True,True,True,0,1397.4432821795701,0,9. Compound Stressors
+"Jitter + Double Fail [4,8]@t=10 (N=11, d=190m)",2094,11,32.0,42.0,True,True,True,True,0,1404.4915413903027,0,9. Compound Stressors
+"N=9, d=170m, Agent 4 Rc=22m, Fail 6@t=10",2111,9,44.0,54.0,True,True,True,True,5,1230.7784240867786,0,11. Comm-Range Heterogeneity
+"N=9, d=165m, Agents 3,6 Rc=22m, Fail 5@t=10",2112,9,188.0,198.0,False,True,False,True,0,1233.9485678412673,0,11. Comm-Range Heterogeneity
+"N=11, d=180m, Agents 4,8 Rc=22m, Fail 6@t=10",2113,11,24.0,34.0,True,True,True,True,0,1559.753098115775,0,11. Comm-Range Heterogeneity
+"N=11, d=185m, Agent 5 Rc=20m, Fail 7@t=10",2114,11,23.0,33.0,True,True,True,True,0,1595.9773569738386,0,11. Comm-Range Heterogeneity

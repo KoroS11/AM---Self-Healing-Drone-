@@ -1,0 +1,2 @@
+run_id,seed,num_drones,comm_range,failure_timestep,failure_count,strategy,time_to_reconnect,final_connectivity,min_connectivity_during_failure,final_sum_rate_mbps
+run_heuristic_dara_42,42,9,28.0,20,1,heuristic_dara,,False,0.0,857.242872969198

@@ -1,0 +1,9 @@
+desc,angle_deg,N,d_AB,reconnected,reconnect_time,final_sum_rate_mbps,failure_mode
+"N=9, d=180m, 45° diagonal",45.0,9,180.0,True,54,1224.09,Success (Stable)
+"N=9, d=180m, 53.1° offset",53.1,9,180.0,True,54,1223.3,Success (Stable)
+"N=11, d=200m, 45° diagonal",45.0,11,200.0,True,24,1584.46,Success (Stable)
+"N=11, d=200m, 60° offset",60.0,11,200.0,True,23,1584.43,Success (Stable)
+"N=11, d=200m, 17° (new)",17.0,11,200.0,True,23,1584.46,Success (Stable)
+"N=9, d=180m, 73° (new)",73.0,9,180.0,True,54,1223.03,Success (Stable)
+"N=11, d=200m, 112° (new)",112.0,11,200.0,True,24,1584.45,Success (Stable)
+"N=9, d=180m, 200° (new)",200.0,9,180.0,True,54,1223.06,Success (Stable)

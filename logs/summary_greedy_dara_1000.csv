@@ -1,0 +1,2 @@
+run_id,seed,num_drones,comm_range,failure_timestep,failure_count,strategy,time_to_reconnect,final_connectivity,min_connectivity_during_failure,final_sum_rate_mbps
+run_greedy_dara_1000,1000,7,28.0,20,1,greedy_dara,,False,0.0,383.43263197374677

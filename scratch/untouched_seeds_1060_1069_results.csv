@@ -1,0 +1,5 @@
+Model,Success,Mean Time,Sum-Rate
+Checkpoint A Baseline,0.9,73.8,1205.3470612348094
+Checkpoint B (Iter 5),1.0,70.9,1224.0595258992926
+Checkpoint B (Iter 10),1.0,69.3,1224.2401636102572
+Checkpoint B (Iter 15),0.9,66.8,1205.3202904528073

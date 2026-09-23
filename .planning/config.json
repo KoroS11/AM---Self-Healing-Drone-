@@ -1,0 +1,8 @@
+{
+  "project_name": "SWARM",
+  "version": "0.1.0",
+  "language": "python",
+  "package_manager": "uv",
+  "workflow_mode": "gsd",
+  "created_at": "2026-09-03"
+}

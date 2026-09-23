@@ -1,0 +1,45 @@
+reconnected,k20_sustained,reconnect_rel,reconnect_abs,sum_rate,transient_drops,desc,category
+False,False,,,0.0,0,"N=9, d=200m, Fail [3,6] at t=10 (Separated)",1. Simultaneous Double Failure
+False,False,,,188.06378548769555,0,"N=9, d=200m, Fail [4,5] at t=10 (Adjacent)",1. Simultaneous Double Failure
+True,True,21.0,31.0,1397.233065657094,1,"N=11, d=200m, Fail [3,7] at t=10 (Separated)",1. Simultaneous Double Failure
+True,True,51.0,61.0,1396.4454645928995,0,"N=11, d=200m, Fail [5,6] at t=10 (Adjacent)",1. Simultaneous Double Failure
+False,False,,,355.6331981902249,0,"N=9, d=200m, Fail 4@t=10, 6@t=30",2. Cascading Failure
+False,False,,,189.3601841593671,0,"N=9, d=200m, Fail 3@t=10, 5@t=30",2. Cascading Failure
+True,True,47.0,77.0,1396.6632846167918,0,"N=11, d=200m, Fail 5@t=10, 7@t=30",2. Cascading Failure
+True,True,50.0,80.0,1396.862714983457,0,"N=11, d=200m, Fail 4@t=10, 3@t=30 (Adj)",2. Cascading Failure
+True,True,66.0,76.0,2222.658240467276,0,"N=15, d=350m, Fail 7@t=10 (Center)",3. Scale Test (Large Swarm)
+True,True,101.0,111.0,2222.5144205499946,0,"N=15, d=350m, Fail 4@t=10 (Near-A)",3. Scale Test (Large Swarm)
+True,True,65.0,75.0,3238.1832397952257,1,"N=21, d=500m, Fail 10@t=10 (Center)",3. Scale Test (Large Swarm)
+False,False,,,2925.8842121916286,0,"N=21, d=500m, Fail 5@t=10 (Near-A)",3. Scale Test (Large Swarm)
+True,True,46.0,56.0,1224.5509250304194,0,"N=9, d=180.0m, 45.0°",4. Non-Collinear Corridor
+True,True,46.0,56.0,1223.5534008160444,0,"N=9, d=180.0m, 53.1°",4. Non-Collinear Corridor
+True,True,20.0,30.0,1584.4582614375634,0,"N=11, d=200.0m, 45.0°",4. Non-Collinear Corridor
+True,True,21.0,31.0,1584.5259527420376,0,"N=11, d=200.0m, 60.0°",4. Non-Collinear Corridor
+True,True,21.0,31.0,1584.459629160471,0,"N=11, d=200.0m, 17.0°",4. Non-Collinear Corridor
+True,True,46.0,56.0,1223.1664410066585,0,"N=9, d=180.0m, 73.0°",4. Non-Collinear Corridor
+True,True,20.0,30.0,1584.4978129655872,0,"N=11, d=200.0m, 112.0°",4. Non-Collinear Corridor
+True,True,46.0,56.0,1224.3018633888141,0,"N=9, d=180.0m, 200.0°",4. Non-Collinear Corridor
+False,False,,,689.8795753765253,0,"N=9, d=200m, Fail 5@t=1 (Extreme Early)",5. Failure Timing Extremes
+True,True,21.0,22.0,1584.48560200862,0,"N=11, d=200m, Fail 6@t=1 (Extreme Early)",5. Failure Timing Extremes
+False,False,,,1056.4903836463143,0,"N=9, d=200m, Fail 5@t=140 (10 ticks left)",5. Failure Timing Extremes
+False,False,,,1426.8221421360731,0,"N=11, d=200m, Fail 6@t=140 (10 ticks left)",5. Failure Timing Extremes
+True,True,52.0,62.0,1219.4120356567198,0,"N=9, d=185m (margin 1.57m), Fail 5@t=10",6. Tight-Margin Geometry
+True,True,68.0,78.0,1216.4522626439107,0,"N=9, d=189m (margin 1.00m), Fail 4@t=10",6. Tight-Margin Geometry
+True,True,57.0,67.0,1213.5386178420245,1,"N=9, d=192m (margin 0.57m), Fail 5@t=10",6. Tight-Margin Geometry
+True,True,91.0,101.0,1211.1644116706518,4,"N=9, d=195m (margin 0.14m), Fail 5@t=10",6. Tight-Margin Geometry
+True,True,71.0,81.0,1223.2554493608268,0,"N=11, d=180m, Fail [5,6,7]@t=10 (Adj Center)",7. Triple Simultaneous Failure
+True,True,18.0,28.0,1222.2197987635122,1,"N=11, d=180m, Fail [3,6,9]@t=10 (Spread)",7. Triple Simultaneous Failure
+True,False,128.0,138.0,1224.59236849333,0,"N=11, d=180m, Fail [2,3,4]@t=10 (Cluster Near-A)",7. Triple Simultaneous Failure
+True,True,53.0,63.0,1223.4895066693377,1,"N=11, d=180m, Fail [4,5,8]@t=10 (Asymmetric)",7. Triple Simultaneous Failure
+False,False,,,188.2620226794057,0,"N=9, d=200m, Adversarial Cut-Vertex -> Relay 2 (Gap: 50.0m)",8. Adversarial Cut-Vertex
+True,True,26.0,36.0,1584.5605036071609,0,"N=11, d=200m, Adversarial Cut-Vertex -> Relay 2 (Gap: 40.0m)",8. Adversarial Cut-Vertex
+True,True,48.0,58.0,1223.1897513910112,0,"N=9, d=180m, Clustered + Adversarial -> Relay 2 (Gap: 180.0m)",8. Adversarial Cut-Vertex
+True,True,39.0,49.0,1576.919673289135,0,"N=11, d=210m, Tight Chain + Adversarial -> Relay 2 (Gap: 42.0m)",8. Adversarial Cut-Vertex
+True,True,42.0,52.0,1396.3512177420018,0,"45° + Double Fail [4,7]@t=10 (N=11, d=200m)",9. Compound Stressors
+True,False,54.0,134.0,1216.4434220682804,0,Tight-Margin d=188m + Late Fail@t=80 (N=9),9. Compound Stressors
+True,True,48.0,78.0,1396.4849895318125,0,"60° + Cascade Fail 5@10,7@30 (N=11, d=200m)",9. Compound Stressors
+True,True,32.0,42.0,1404.3303017090539,0,"Jitter + Double Fail [4,8]@t=10 (N=11, d=190m)",9. Compound Stressors
+True,True,44.0,54.0,1230.685116914809,0,"N=9, d=170m, Agent 4 Rc=22m, Fail 6@t=10",11. Comm-Range Heterogeneity
+False,False,,,705.4320889047076,0,"N=9, d=165m, Agents 3,6 Rc=22m, Fail 5@t=10",11. Comm-Range Heterogeneity
+True,True,24.0,34.0,1559.6073694193751,0,"N=11, d=180m, Agents 4,8 Rc=22m, Fail 6@t=10",11. Comm-Range Heterogeneity
+True,True,23.0,33.0,1595.9443006044846,0,"N=11, d=185m, Agent 5 Rc=20m, Fail 7@t=10",11. Comm-Range Heterogeneity
