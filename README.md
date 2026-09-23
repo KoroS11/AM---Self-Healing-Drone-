@@ -44,18 +44,31 @@ $$
 2(\mathbf{p}_i - \mathbf{p}_j)^\top (\mathbf{a}_i - \mathbf{a}_j) \le -2\Vert\mathbf{v}_i - \mathbf{v}_j\Vert^2 + \alpha_1 \dot{h}_{ij} + \alpha_2 h_{ij}
 $$
 
-where $h_{ij} = r_{\mathrm{safe}}^2 - \Vert\mathbf{p}_i - \mathbf{p}_j\Vert^2 \ge 0$, and $r_{\mathrm{safe}} = \max\left(\min(R_{c,i}, R_{c,j}) - \epsilon, 1.0\,\text{m}\right)$.
+where:
+
+$$
+h_{ij} = r_{\mathrm{safe}}^2 - \Vert\mathbf{p}_i - \mathbf{p}_j\Vert^2 \ge 0, \qquad r_{\mathrm{safe}} = \max\left(\min(R_{c,i}, R_{c,j}) - \epsilon,\ 1.0\text{ m}\right)
+$$
 
 ![Inter-Relay Distance Dynamics and Throughput Stability](docs/images/recovery_dynamics.png)
 
-*Figure 2: Distance invariance and Shannon sum-rate throughput stability under B-Prime + Second-Order CBF-QP ($\alpha_1=3.0, \alpha_2=1.5, \epsilon=0.02\,\text{m}$) versus unfiltered baseline drift.*
+*Figure 2: Distance invariance and Shannon sum-rate throughput stability under B-Prime + Second-Order CBF-QP (α₁ = 3.0, α₂ = 1.5, ε = 0.02 m) versus unfiltered baseline drift.*
 
 ### 2. $9 \times 5$ Heterogeneity-Aware Graph Schema
 
 Standard spatial GNNs assume homogeneous communication radii, leading to severe edge chattering when individual drones suffer degraded transceivers ($R_c < 28\,\text{m}$). AM-SHDS incorporates exact local hardware degradation into graph message-passing:
 
-- **Node Features (9-dim)**: $p_x', p_y', v_x', v_y', \mathrm{role}_{\mathrm{one\text{-}hot}} (4), R_{c,i} / R_{c,\mathrm{nominal}}$
-- **Edge Features (5-dim)**: $\Delta p_x', \Delta p_y', \Vert\Delta p'\Vert, \mathrm{LOS}_{\mathrm{flag}}, \mathrm{slack}_{ij}$
+- **Node Features (9-dim)**:
+
+$$
+p_x',\ p_y',\ v_x',\ v_y',\ \mathrm{role}_{\text{one-hot}}\ (4),\ R_{c,i} / R_{c,\mathrm{nominal}}
+$$
+
+- **Edge Features (5-dim)**:
+
+$$
+\Delta p_x',\ \Delta p_y',\ \Vert\Delta p'\Vert,\ \mathrm{LOS}_{\mathrm{flag}},\ \mathrm{slack}_{ij}
+$$
 
 $$
 \mathrm{slack}_{ij} = \frac{\min(R_{c,i}, R_{c,j}) - \Vert\mathbf{p}_i - \mathbf{p}_j\Vert}{\max\left(\min(R_{c,i}, R_{c,j}), 10^{-3}\right)}
@@ -87,7 +100,7 @@ All local observations and relative vectors are dynamically projected onto the u
 
 ![Stress Battery Performance Comparison](docs/images/stress_battery_performance.png)
 
-*Figure 3: Sustained $K=20$ pass rates across all 10 stress categories comparing baseline Checkpoint B versus B-Prime + Second-Order CBF-QP ($\alpha_1=3.0, \alpha_2=1.5, \epsilon=0.02\,\text{m}$).*
+*Figure 3: Sustained K = 20 pass rates across all 10 stress categories comparing baseline Checkpoint B versus B-Prime + Second-Order CBF-QP (α₁ = 3.0, α₂ = 1.5, ε = 0.02 m).*
 
 | Stress Category | Total $N$ | Baseline Checkpoint B | Production B-Prime + CBF-QP | Performance & Mechanism Notes |
 | :--- | :---: | :---: | :---: | :--- |
