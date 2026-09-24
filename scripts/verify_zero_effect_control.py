@@ -2,8 +2,11 @@
 Checkpoint C Step 4: Zero-Effect Control.
 
 Runs the full N=50 eval sweep with alpha pinned at 0.0 and diffs every
-per-seed outcome against the saved Checkpoint B-prime baseline, bit-for-bit.
+per-seed outcome against the pre-existing Checkpoint B-prime baseline, bit-for-bit.
 Exits nonzero on any mismatch — this must pass before any alpha > 0 run begins.
+
+GUARD: Refuses to run if the baseline file does not already exist.
+Baseline generation must be performed explicitly via `scripts/generate_b_prime_baseline.py`.
 """
 import os
 import sys
@@ -15,44 +18,23 @@ from train_pipeline import TrainPipeline, AlphaSchedule
 BASELINE_PATH = "results/checkpoint_b_prime_baseline.json"
 CHECKPOINT_PATH = "checkpoints/checkpoint_B_prime_best.pt"
 TEST_BANK_PATH = "checkpoints/test_bank_50.pkl"
-TOLERANCE = 0.0  # exact match required; loosen only with a documented reason
+TOLERANCE = 0.0  # exact bit-identical match required
 
 def load_baseline(path: str) -> dict:
+    if not os.path.exists(path):
+        print(f"\n[CRITICAL ERROR] Baseline file not found: '{path}'")
+        print("The zero-effect control requires a pre-existing baseline generated independently.")
+        print("Run 'uv run python scripts/generate_b_prime_baseline.py' first.")
+        sys.exit(1)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-def generate_baseline_if_missing(pipeline: TrainPipeline, path: str, test_bank_path: str):
-    if os.path.exists(path):
-        return
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    print(f"[Zero-Effect] Generating initial ground-truth baseline at {path}...")
-    baseline_data = {}
-    test_bank = pipeline.load_test_bank(test_bank_path)
-    alpha_sched = AlphaSchedule(alpha_max=0.0, k_anneal=1)
-    
-    for seed_id, scenario in test_bank.items():
-        outcome = pipeline.run_episode(
-            scenario,
-            alpha_schedule=alpha_sched,
-            iteration=0,
-            max_steps=150
-        )
-        baseline_data[str(seed_id)] = {
-            "reconnect_ticks": outcome.reconnect_ticks,
-            "success": outcome.success,
-            "final_reward": outcome.total_reward,
-            "sum_rate": outcome.sum_rate
-        }
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(baseline_data, f, indent=2)
-    print(f"[Zero-Effect] Baseline saved successfully ({len(baseline_data)} scenarios).")
 
 def run_zero_effect_sweep(pipeline: TrainPipeline, test_bank_path: str) -> dict:
     """Runs the fixed 50-scenario bank with alpha=0.0 for every step."""
     alpha_sched = AlphaSchedule(alpha_max=0.0, k_anneal=1)  # forces alpha=0 always
     results = {}
     test_bank = pipeline.load_test_bank(test_bank_path)
-    for seed_id, scenario in test_bank.items():
+    for seed_id, scenario in sorted(test_bank.items(), key=lambda x: int(x[0])):
         outcome = pipeline.run_episode(
             scenario,
             alpha_schedule=alpha_sched,
@@ -91,20 +73,24 @@ def diff_results(baseline: dict, current: dict) -> list:
     return mismatches
 
 def main():
-    pipeline = TrainPipeline.load_checkpoint(CHECKPOINT_PATH)
-    generate_baseline_if_missing(pipeline, BASELINE_PATH, TEST_BANK_PATH)
-    
+    if not os.path.exists(BASELINE_PATH):
+        print(f"\n[CRITICAL ERROR] Baseline file not found: '{BASELINE_PATH}'")
+        print("The zero-effect control requires a pre-existing baseline generated independently.")
+        print("Refusing to generate on-the-fly. Run 'uv run python scripts/generate_b_prime_baseline.py' first.")
+        sys.exit(1)
+        
     baseline = load_baseline(BASELINE_PATH)
+    pipeline = TrainPipeline.load_checkpoint(CHECKPOINT_PATH)
     current = run_zero_effect_sweep(pipeline, TEST_BANK_PATH)
 
     mismatches = diff_results(baseline, current)
     if mismatches:
-        print(f"ZERO-EFFECT CONTROL FAILED — {len(mismatches)} mismatch(es):")
+        print(f"[FAILED] ZERO-EFFECT CONTROL FAILED — {len(mismatches)} mismatch(es):")
         for m in mismatches:
             print(f"  {m}")
         sys.exit(1)
 
-    print(f"Zero-effect control PASSED — {len(current)} seeds bit-identical to baseline.")
+    print(f"[PASSED] Zero-effect control PASSED — {len(current)} seeds bit-identical to baseline.")
     sys.exit(0)
 
 if __name__ == "__main__":
