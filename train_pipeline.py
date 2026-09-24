@@ -21,6 +21,31 @@ from swarm_sim.policies.gnn_policy import GNNPolicy
 from swarm_sim.graph.channel import ChannelModel
 from swarm_sim.graph.topology import SwarmTopologyManager
 
+class AlphaSchedule:
+    """Linear Annealing Schedule for Checkpoint C Throughput-Aware PPO."""
+    def __init__(self, alpha_max: float = 0.5, k_anneal: int = 1000):
+        self.alpha_max = float(alpha_max)
+        self.k_anneal = int(k_anneal)
+
+    def __call__(self, iteration: int) -> float:
+        if self.k_anneal <= 0:
+            return float(self.alpha_max)
+        if iteration <= 0:
+            return 0.0
+        if iteration >= self.k_anneal:
+            return float(self.alpha_max)
+        return float(self.alpha_max * (iteration / self.k_anneal))
+
+
+class EpisodeOutcome:
+    """Telemetry and outcome metrics for a single evaluation rollout episode."""
+    def __init__(self, reconnect_ticks: Optional[int], success: bool, total_reward: float, sum_rate: float):
+        self.reconnect_ticks = reconnect_ticks
+        self.success = bool(success)
+        self.total_reward = float(total_reward)
+        self.sum_rate = float(sum_rate)
+
+
 class TrainPipeline:
     """3-Checkpoint Training & Evaluation Pipeline for Autonomous Swarm Recovery."""
     def __init__(
@@ -480,9 +505,12 @@ class TrainPipeline:
         lambda_margin: float = 0.20,
         lambda_vel: float = 0.05,
         lambda_acc: float = 0.002,
-        accelerations: Optional[np.ndarray] = None
+        accelerations: Optional[np.ndarray] = None,
+        alpha: float = 0.0,
+        sum_rate_mbps: float = 0.0,
+        r_ref_mbps: float = 1.0
     ) -> float:
-        """Compute structured multi-agent reward for Checkpoint B/B-Prime MAPPO with heterogeneous Rc margins.
+        """Compute structured multi-agent reward for Checkpoint B/B-Prime/C MAPPO with heterogeneous Rc margins and throughput annealing.
         
         Components:
           1. Milestone Reconnection Bonus: +500.0 on the SINGLE exact step A <-> B is first restored in an episode.
@@ -490,6 +518,7 @@ class TrainPipeline:
           3. Distance-Margin Bonus: +lambda_margin * mean((min(Rc_i, Rc_j) - d_ij) / min(Rc_i, Rc_j)) for active edges (when connected).
           4. Velocity-Damping Penalty: -lambda_vel * mean(||v_i||^2) on active mobile relays (when connected).
           5. Acceleration/Energy Penalty: -lambda_acc * mean(||a_i||^2) on active mobile relays.
+          6. Checkpoint C Throughput Term: +alpha * (SumRate / R_ref) when connected (annealed via AlphaSchedule).
         """
         # 1. Milestone bonus: strictly checks "is this the first time the episode has ever reconnected"
         r_bonus = lambda_bonus if is_first_reconnection_event else 0.0
@@ -534,14 +563,21 @@ class TrainPipeline:
                 a_sq = np.mean(np.sum(accelerations[mobile_mask] ** 2, axis=1))
                 r_acc = -lambda_acc * float(a_sq)
                 
-        return float(r_bonus + r_conn + r_margin + r_vel + r_acc)
+        # 6. Checkpoint C Annealed Throughput Term: alpha * (SumRate / R_ref)
+        r_throughput = 0.0
+        if alpha > 0.0 and r_ref_mbps > 0.0:
+            r_throughput = alpha * (sum_rate_mbps / r_ref_mbps)
+                
+        return float(r_bonus + r_conn + r_margin + r_vel + r_acc + r_throughput)
 
     def collect_mappo_rollout(
         self,
         scenario_config: Dict[str, Any],
         actor: ActorGNN,
         critic: CriticGNN,
-        max_steps: int = 150
+        max_steps: int = 150,
+        alpha: float = 0.0,
+        r_ref_mbps: Optional[float] = None
     ) -> Dict[str, Any]:
         """Collect one closed-loop rollout episode computing step rewards and returns.
         
@@ -562,6 +598,8 @@ class TrainPipeline:
         injector = FailureInjector(sim)
         policy = GNNPolicy(sim, actor_gnn=actor, device=str(self.device))
         topo = SwarmTopologyManager(sim)
+        
+        ref_rate = r_ref_mbps if r_ref_mbps is not None else self.channel_model.precompute_r_ref(num_relays=scenario_config["num_drones"] - 2)
         
         # Persistent per-episode tracking: initialized to False, set to True on first reconnect, never reset
         ever_reconnected = False
@@ -595,11 +633,16 @@ class TrainPipeline:
                 is_first_reconn = True
                 ever_reconnected = True
                 
+            sum_rate = self.channel_model.compute_network_throughput(sim, G) if (is_connected and alpha > 0.0) else 0.0
+                
             reward = self.compute_step_reward(
                 sim=sim,
                 is_connected=is_connected,
                 is_first_reconnection_event=is_first_reconn,
-                accelerations=acc_world
+                accelerations=acc_world,
+                alpha=alpha,
+                sum_rate_mbps=sum_rate,
+                r_ref_mbps=ref_rate
             )
             
             episode_rewards.append(reward)
@@ -615,6 +658,120 @@ class TrainPipeline:
             "reconnected": ever_reconnected,
             "total_return": sum(episode_rewards)
         }
+
+    @classmethod
+    def load_checkpoint(
+        cls,
+        checkpoint_path: str,
+        output_dir: str = "checkpoints",
+        device: Optional[str] = None
+    ) -> "TrainPipeline":
+        """Load a trained model checkpoint into an initialized TrainPipeline instance."""
+        pipeline = cls(output_dir=output_dir, device=device)
+        full_path = checkpoint_path if os.path.exists(checkpoint_path) else os.path.join(output_dir, checkpoint_path)
+        state = torch.load(full_path, map_location=pipeline.device, weights_only=False)
+        actor_state = state["actor_state_dict"] if isinstance(state, dict) and "actor_state_dict" in state else state
+        
+        # Check node_in_dim / edge_in_dim from weight shape
+        node_in_dim = 9 if ("node_encoder.0.weight" in actor_state and actor_state["node_encoder.0.weight"].shape[1] == 9) else 8
+        edge_in_dim = 5 if ("edge_encoder.0.weight" in actor_state and actor_state["edge_encoder.0.weight"].shape[1] == 5) else 4
+        
+        actor = ActorGNN(node_in_dim=node_in_dim, edge_in_dim=edge_in_dim, k_hops=2, max_accel=5.0).to(pipeline.device)
+        actor.load_state_dict(actor_state, strict=False)
+        actor.eval()
+        pipeline.loaded_actor = actor
+        return pipeline
+
+    def load_test_bank(self, path: Optional[str] = None) -> Dict[int, Dict[str, Any]]:
+        """Load test bank scenarios keyed by integer seed."""
+        bank_path = path if (path is not None and os.path.exists(path)) else os.path.join(self.output_dir, path if path else "test_bank_50.pkl")
+        data = TestBankGenerator.load_bank(bank_path)
+        all_50 = data["all_50"] if "all_50" in data else (data["scenarios"] if "scenarios" in data else data)
+        if isinstance(all_50, list):
+            return {sc["seed"]: sc for sc in all_50}
+        return all_50
+
+    def run_episode(
+        self,
+        scenario: Dict[str, Any],
+        actor: Optional[ActorGNN] = None,
+        alpha_schedule: Optional[AlphaSchedule] = None,
+        iteration: int = 0,
+        max_steps: int = 150
+    ) -> EpisodeOutcome:
+        """Run a single deterministic evaluation episode and return structured outcome telemetry."""
+        active_actor = actor if actor is not None else getattr(self, "loaded_actor", None)
+        if active_actor is None:
+            raise ValueError("No actor provided or loaded in pipeline.")
+            
+        alpha = alpha_schedule(iteration) if alpha_schedule is not None else 0.0
+        
+        config = ExperimentConfig(
+            num_drones=scenario["num_drones"],
+            comm_range=scenario["comm_range"],
+            seed=scenario["seed"]
+        )
+        sim = SwarmSimulator(config)
+        sc_obj = DisasterRelayScenario(sim)
+        g_a, g_b = sc_obj.setup_scenario(
+            endpoint_a_pos=scenario.get("endpoint_a_pos", (0.0, 0.0)),
+            endpoint_b_pos=scenario.get("endpoint_b_pos", (200.0, 0.0))
+        )
+        injector = FailureInjector(sim)
+        policy = GNNPolicy(sim, actor_gnn=active_actor, device=str(self.device))
+        topo = SwarmTopologyManager(sim)
+        
+        r_ref = self.channel_model.precompute_r_ref(num_relays=scenario["num_drones"] - 2)
+        
+        ever_reconnected = False
+        reconnected_step = None
+        total_reward = 0.0
+        
+        for t in range(max_steps):
+            if t == scenario["fail_timestep"]:
+                injector.fail_agent(scenario["fail_agent_id"])
+                
+            node_t, edge_t, edge_idx_t, mobile_mask_t = policy.extract_graph_features()
+            with torch.no_grad():
+                acc_t = active_actor(node_t, edge_t, edge_idx_t, mobile_mask_t)
+                
+            acc_corridor = acc_t.cpu().numpy()
+            acc_world = policy.corridor_to_world_forces(acc_corridor)
+            sim.step(accelerations=acc_world)
+            
+            G = topo.build_graph()
+            is_connected = topo.has_path(g_a, g_b, graph=G)
+            
+            is_first_reconn = False
+            if is_connected:
+                if not ever_reconnected:
+                    is_first_reconn = True
+                    ever_reconnected = True
+                    reconnected_step = t - scenario["fail_timestep"]
+            
+            sum_rate = self.channel_model.compute_network_throughput(sim, G) if is_connected else 0.0
+            
+            r_step = self.compute_step_reward(
+                sim=sim,
+                is_connected=is_connected,
+                is_first_reconnection_event=is_first_reconn,
+                accelerations=acc_world,
+                alpha=alpha,
+                sum_rate_mbps=sum_rate,
+                r_ref_mbps=r_ref
+            )
+            total_reward += r_step
+            
+        G_final = topo.build_graph()
+        final_conn = topo.has_path(g_a, g_b, graph=G_final)
+        final_sum_rate = self.channel_model.compute_network_throughput(sim, G_final)
+        
+        return EpisodeOutcome(
+            reconnect_ticks=reconnected_step,
+            success=final_conn,
+            total_reward=total_reward,
+            sum_rate=final_sum_rate
+        )
 
     def run_checkpoint_B(
         self,
@@ -667,7 +824,7 @@ class TrainPipeline:
             
             # Load Actor from Checkpoint A warm-start
             actor = ActorGNN(k_hops=2, max_accel=5.0).to(self.device)
-            actor.load_state_dict(torch.load(checkpoint_A_path, map_location=self.device), strict=False)
+            actor.load_state_dict(torch.load(checkpoint_A_path, map_location=self.device, weights_only=False), strict=False)
             critic = CriticGNN(num_layers=2).to(self.device)
             
             actor_opt = optim.Adam(actor.parameters(), lr=curr_lr_actor)

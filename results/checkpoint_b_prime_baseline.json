@@ -1,0 +1,302 @@
+{
+  "1000": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 558.0553720036285,
+    "sum_rate": 881.369832715583
+  },
+  "1001": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 582.704891165653,
+    "sum_rate": 1223.9749784075857
+  },
+  "1002": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 597.6957804162621,
+    "sum_rate": 1225.5470239359868
+  },
+  "1003": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 563.2214038232142,
+    "sum_rate": 1224.1519197396874
+  },
+  "1004": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 599.1059990534029,
+    "sum_rate": 1565.9567122821534
+  },
+  "1005": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 574.2989075304687,
+    "sum_rate": 1223.9839271587705
+  },
+  "1006": {
+    "reconnect_ticks": -20,
+    "success": false,
+    "final_reward": 563.7885518192136,
+    "sum_rate": 694.1166748992563
+  },
+  "1007": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 598.3270632372185,
+    "sum_rate": 1566.1772550303783
+  },
+  "1008": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 579.9617099398762,
+    "sum_rate": 881.3934651379532
+  },
+  "1009": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 580.7809372098721,
+    "sum_rate": 881.6948086112226
+  },
+  "1010": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 572.0533919926834,
+    "sum_rate": 881.248209089878
+  },
+  "1011": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 598.8148130628114,
+    "sum_rate": 1566.8296888312302
+  },
+  "1012": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 584.7192022887185,
+    "sum_rate": 1566.3725837991446
+  },
+  "1013": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 545.7853896590509,
+    "sum_rate": 881.4487049456849
+  },
+  "1014": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 597.521826559653,
+    "sum_rate": 1223.9151140994452
+  },
+  "1015": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 568.3463934924928,
+    "sum_rate": 1566.4613660714263
+  },
+  "1016": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 579.9617099398762,
+    "sum_rate": 881.3934651379532
+  },
+  "1017": {
+    "reconnect_ticks": -20,
+    "success": false,
+    "final_reward": 563.7885518192136,
+    "sum_rate": 694.1166748992563
+  },
+  "1018": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 582.704891165653,
+    "sum_rate": 1223.9749784075857
+  },
+  "1019": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 548.3428234230537,
+    "sum_rate": 1223.9469115081324
+  },
+  "1020": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 563.2214038232142,
+    "sum_rate": 1224.1519197396874
+  },
+  "1021": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 582.704891165653,
+    "sum_rate": 1223.9749784075857
+  },
+  "1022": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 561.6488641585813,
+    "sum_rate": 881.6475428280146
+  },
+  "1023": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 578.0851513460665,
+    "sum_rate": 881.6587783124337
+  },
+  "1024": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 583.6004427882866,
+    "sum_rate": 1224.0784171633306
+  },
+  "1025": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 546.5944053854772,
+    "sum_rate": 1566.235600316393
+  },
+  "1026": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 597.3594158444271,
+    "sum_rate": 1223.6497717262741
+  },
+  "1027": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 598.5805069078875,
+    "sum_rate": 1566.3477647738287
+  },
+  "1028": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 598.361575173741,
+    "sum_rate": 1224.0752806847486
+  },
+  "1029": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 575.8365564734127,
+    "sum_rate": 1566.0396766662702
+  },
+  "1030": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 582.704891165653,
+    "sum_rate": 1223.9749784075857
+  },
+  "1031": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 574.2989075304687,
+    "sum_rate": 1223.9839271587705
+  },
+  "1032": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 575.8465013277323,
+    "sum_rate": 881.1156853830678
+  },
+  "1033": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 568.7651993990805,
+    "sum_rate": 1566.494755039694
+  },
+  "1034": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 568.576899320974,
+    "sum_rate": 1566.3061885376937
+  },
+  "1035": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 561.6488641585813,
+    "sum_rate": 881.6475428280146
+  },
+  "1036": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 599.4846386566275,
+    "sum_rate": 1566.126196389193
+  },
+  "1037": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 588.1691936377272,
+    "sum_rate": 1224.2463204460537
+  },
+  "1038": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 545.3719076311144,
+    "sum_rate": 881.3444100355812
+  },
+  "1039": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 580.7809372098721,
+    "sum_rate": 881.6948086112226
+  },
+  "1040": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 539.6372493752488,
+    "sum_rate": 881.8718782206306
+  },
+  "1041": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 583.6004427882866,
+    "sum_rate": 1224.0784171633306
+  },
+  "1042": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 580.7809372098721,
+    "sum_rate": 881.6948086112226
+  },
+  "1043": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 598.5078248842354,
+    "sum_rate": 1223.9221484012887
+  },
+  "1044": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 568.576899320974,
+    "sum_rate": 1566.3061885376937
+  },
+  "1045": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 574.3297974441955,
+    "sum_rate": 1223.9964874077943
+  },
+  "1046": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 576.5934456607229,
+    "sum_rate": 1566.090782226222
+  },
+  "1047": {
+    "reconnect_ticks": -20,
+    "success": true,
+    "final_reward": 545.4679999245493,
+    "sum_rate": 1566.0698717357536
+  },
+  "1048": {
+    "reconnect_ticks": -15,
+    "success": true,
+    "final_reward": 597.521826559653,
+    "sum_rate": 1223.9151140994452
+  },
+  "1049": {
+    "reconnect_ticks": -10,
+    "success": true,
+    "final_reward": 598.2800980612277,
+    "sum_rate": 1566.7272537377287
+  }
+}
