@@ -53,8 +53,7 @@ def test_reward_single_reconnection_event(tmp_path):
         r = pipeline.compute_step_reward(
             sim=sim,
             is_connected=is_connected,
-            is_first_reconnection_event=is_first_reconn,
-            comm_range=28.0
+            is_first_reconnection_event=is_first_reconn
         )
         rewards.append(r)
         if is_first_reconn:
@@ -68,6 +67,52 @@ def test_reward_single_reconnection_event(tmp_path):
     # Exact cumulative bonus contribution
     total_bonus_contribution = sum(500.0 for r in rewards if r >= 500.0)
     assert total_bonus_contribution == 500.0
+
+def test_reward_margin_uses_pairwise_min_rc(tmp_path):
+    """Verify that compute_step_reward computes distance margins against min(Rc_i, Rc_j) rather than a global scalar."""
+    import numpy as np
+    from swarm_sim.core.simulator import SwarmSimulator
+    from swarm_sim.utils.config import ExperimentConfig
+    from swarm_sim.utils.enums import AgentStatus
+    
+    pipeline = TrainPipeline(output_dir=str(tmp_path))
+    sim = SwarmSimulator(ExperimentConfig(num_drones=2, seed=123))
+    
+    # Zero velocities & accelerations so velocity/acc penalties are exactly 0.0
+    sim.velocities[:] = 0.0
+    sim.statuses[:] = AgentStatus.ACTIVE
+    
+    # Node 0 has Rc=28.0m, Node 1 is degraded to Rc=22.0m
+    sim.comm_ranges[0] = 28.0
+    sim.comm_ranges[1] = 22.0
+    min_rc = 22.0
+    
+    # Case A: dist = 25.0m (within 28m, but outside min_rc=22m) -> should have ZERO margin bonus
+    sim.positions[0] = np.array([0.0, 0.0])
+    sim.positions[1] = np.array([25.0, 0.0])
+    
+    reward_outside = pipeline.compute_step_reward(
+        sim=sim,
+        is_connected=True,
+        is_first_reconnection_event=False,
+        lambda_conn=1.0,
+        lambda_margin=0.20
+    )
+    # With no valid edge under min_rc, margin bonus is 0.0 -> reward is exactly lambda_conn (1.0)
+    assert reward_outside == pytest.approx(1.0, abs=1e-6)
+    
+    # Case B: dist = 20.0m (within min_rc=22m) -> margin = (22 - 20) / 22 = 2 / 22
+    sim.positions[1] = np.array([20.0, 0.0])
+    reward_inside = pipeline.compute_step_reward(
+        sim=sim,
+        is_connected=True,
+        is_first_reconnection_event=False,
+        lambda_conn=1.0,
+        lambda_margin=0.20
+    )
+    expected_margin = 0.20 * ((22.0 - 20.0) / 22.0)
+    expected_reward = 1.0 + expected_margin
+    assert reward_inside == pytest.approx(expected_reward, abs=1e-6)
 
 def test_spare_test_bank_runtime_loading(tmp_path):
     """Verify test_bank_spare.pkl runtime loading and seed list."""
@@ -84,4 +129,5 @@ def test_spare_test_bank_runtime_loading(tmp_path):
     assert len(spare_data["spare_10"]) == 10
     spare_seeds = [s["seed"] for s in spare_data["spare_10"]]
     assert spare_seeds == list(range(1050, 1060))
+
 

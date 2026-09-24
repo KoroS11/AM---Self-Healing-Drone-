@@ -51,7 +51,10 @@ class TrainPipeline:
         scenarios: List[Dict[str, Any]],
         max_steps: int = 150
     ) -> Dict[str, Any]:
-        """Evaluate a policy over a list of scenario configs."""
+        """Evaluate a policy over a list of scenario configs with strict RNG isolation."""
+        np_state = np.random.get_state()
+        torch_state = torch.random.get_rng_state()
+        
         results = []
         
         for sc in scenarios:
@@ -105,6 +108,10 @@ class TrainPipeline:
         mean_time = float(np.mean(valid_times)) if valid_times else 999.0
         mean_sum_rate = float(np.mean([r["final_sum_rate_mbps"] for r in results]))
         
+        # Restore pre-evaluation RNG state so validation passes do not advance training RNG stream
+        np.random.set_state(np_state)
+        torch.random.set_rng_state(torch_state)
+        
         return {
             "success_rate": success_rate,
             "mean_time": mean_time,
@@ -146,12 +153,13 @@ class TrainPipeline:
                 expert_acc = expert.compute_control_forces()
                 node_t, edge_t, edge_idx_t, mobile_mask_t = gnn_helper.extract_graph_features()
                 
+                corridor_expert_acc = gnn_helper.world_to_corridor_forces(expert_acc)
                 dataset.append({
                     "node_t": node_t,
                     "edge_t": edge_t,
                     "edge_idx_t": edge_idx_t,
                     "mobile_mask_t": mobile_mask_t,
-                    "target_acc": torch.from_numpy(expert_acc).to(self.device).float(),
+                    "target_acc": torch.from_numpy(corridor_expert_acc).to(self.device).float(),
                     "seed": sc["seed"]
                 })
                 
@@ -365,12 +373,13 @@ class TrainPipeline:
                             expert_acc = expert.compute_control_forces()
                             learner_acc = learner_pol.compute_control_forces()
                             
+                            corridor_expert_acc = learner_pol.world_to_corridor_forces(expert_acc)
                             aggregated_dataset.append({
                                 "node_t": node_t,
                                 "edge_t": edge_t,
                                 "edge_idx_t": edge_idx_t,
                                 "mobile_mask_t": mobile_mask_t,
-                                "target_acc": torch.from_numpy(expert_acc).to(self.device).float(),
+                                "target_acc": torch.from_numpy(corridor_expert_acc).to(self.device).float(),
                                 "seed": sc["seed"]
                             })
                             new_samples += 1
@@ -465,7 +474,6 @@ class TrainPipeline:
         sim: SwarmSimulator,
         is_connected: bool,
         is_first_reconnection_event: bool,
-        comm_range: float = 28.0,
         lambda_bonus: float = 500.0,
         lambda_conn: float = 1.0,
         lambda_disc_step: float = -0.1,
@@ -474,12 +482,12 @@ class TrainPipeline:
         lambda_acc: float = 0.002,
         accelerations: Optional[np.ndarray] = None
     ) -> float:
-        """Compute structured multi-agent reward for Checkpoint B MAPPO.
+        """Compute structured multi-agent reward for Checkpoint B/B-Prime MAPPO with heterogeneous Rc margins.
         
         Components:
           1. Milestone Reconnection Bonus: +500.0 on the SINGLE exact step A <-> B is first restored in an episode.
           2. Step Connectivity: +1.0 while connected, -0.1 step penalty while disconnected.
-          3. Distance-Margin Bonus: +lambda_margin * mean((Rc - d_ij)/Rc) for active edges (when connected).
+          3. Distance-Margin Bonus: +lambda_margin * mean((min(Rc_i, Rc_j) - d_ij) / min(Rc_i, Rc_j)) for active edges (when connected).
           4. Velocity-Damping Penalty: -lambda_vel * mean(||v_i||^2) on active mobile relays (when connected).
           5. Acceleration/Energy Penalty: -lambda_acc * mean(||a_i||^2) on active mobile relays.
         """
@@ -499,19 +507,23 @@ class TrainPipeline:
                 v_sq = np.mean(np.sum(sim.velocities[mobile_mask] ** 2, axis=1))
                 r_vel = -lambda_vel * float(v_sq)
                 
-            # Distance margin across active connected edges
+            # Distance margin across active connected edges with pairwise min(Rc_u, Rc_v)
             pos = sim.positions
             active_mask = sim.statuses == AgentStatus.ACTIVE
             active_indices = np.where(active_mask)[0]
             if len(active_indices) >= 2:
                 diffs = pos[active_indices, None, :] - pos[None, active_indices, :]
                 dists = np.linalg.norm(diffs, axis=-1)
-                # Upper triangular pairs with d <= Rc
                 i_upper, j_upper = np.triu_indices(len(active_indices), k=1)
                 edge_dists = dists[i_upper, j_upper]
-                valid_edges = edge_dists[edge_dists <= comm_range]
-                if len(valid_edges) > 0:
-                    margins = (comm_range - valid_edges) / comm_range
+                
+                # per-edge threshold: min(Rc_u, Rc_v), not a global scalar
+                rc = sim.comm_ranges[active_indices]
+                edge_rc = np.minimum(rc[i_upper], rc[j_upper])
+                
+                valid = edge_dists <= edge_rc
+                if np.any(valid):
+                    margins = (edge_rc[valid] - edge_dists[valid]) / edge_rc[valid]
                     r_margin = lambda_margin * float(np.mean(margins))
                     
         # 5. Acceleration penalty
@@ -570,8 +582,9 @@ class TrainPipeline:
                 acc_t = actor(node_t, edge_t, edge_idx_t, mobile_mask_t)
                 val_t = critic(node_t, edge_t, edge_idx_t)
                 
-            acc_np = acc_t.cpu().numpy()
-            sim.step(accelerations=acc_np)
+            acc_corridor = acc_t.cpu().numpy()
+            acc_world = policy.corridor_to_world_forces(acc_corridor)
+            sim.step(accelerations=acc_world)
             
             G = topo.build_graph()
             is_connected = topo.has_path(g_a, g_b, graph=G)
@@ -586,8 +599,7 @@ class TrainPipeline:
                 sim=sim,
                 is_connected=is_connected,
                 is_first_reconnection_event=is_first_reconn,
-                comm_range=scenario_config["comm_range"],
-                accelerations=acc_np
+                accelerations=acc_world
             )
             
             episode_rewards.append(reward)
@@ -655,7 +667,7 @@ class TrainPipeline:
             
             # Load Actor from Checkpoint A warm-start
             actor = ActorGNN(k_hops=2, max_accel=5.0).to(self.device)
-            actor.load_state_dict(torch.load(checkpoint_A_path, map_location=self.device))
+            actor.load_state_dict(torch.load(checkpoint_A_path, map_location=self.device), strict=False)
             critic = CriticGNN(num_layers=2).to(self.device)
             
             actor_opt = optim.Adam(actor.parameters(), lr=curr_lr_actor)
@@ -671,6 +683,7 @@ class TrainPipeline:
             
             # Divergence guard tracker
             consecutive_success_drops = 0
+            consecutive_gate_passes = 0
             diverged = False
             
             # MAPPO Optimization Loop
